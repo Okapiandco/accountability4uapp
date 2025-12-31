@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
 
 interface VoiceRecorderProps {
   onTranscript: (text: string) => void;
@@ -15,36 +14,57 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [interimText, setInterimText] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const recognitionRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const transcriptRef = useRef<string>('');
   const { toast } = useToast();
 
   // Check for Web Speech API support
-  const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-  const hasSpeechRecognition = !!SpeechRecognitionAPI;
+  const getSpeechRecognition = useCallback(() => {
+    return window.SpeechRecognition || window.webkitSpeechRecognition;
+  }, []);
+
+  const hasSpeechRecognition = !!getSpeechRecognition();
 
   useEffect(() => {
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
-      if (audioContextRef.current) {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // Ignore errors on cleanup
+        }
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('Starting recording...');
+      console.log('Speech Recognition available:', hasSpeechRecognition);
+      
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        } 
+      });
+      streamRef.current = stream;
       
       // Set up audio analysis for visualization
       audioContextRef.current = new AudioContext();
@@ -67,15 +87,23 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
       updateLevel();
 
       // Set up Web Speech API for real-time transcription
-      if (hasSpeechRecognition) {
+      const SpeechRecognitionAPI = getSpeechRecognition();
+      if (SpeechRecognitionAPI) {
+        console.log('Initializing Speech Recognition...');
         recognitionRef.current = new SpeechRecognitionAPI();
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
         recognitionRef.current.lang = 'en-US';
         
         transcriptRef.current = '';
+        setInterimText('');
         
-        recognitionRef.current.onresult = (event) => {
+        recognitionRef.current.onstart = () => {
+          console.log('Speech recognition started');
+        };
+
+        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+          console.log('Speech recognition result received', event.results.length);
           let finalTranscript = '';
           let interimTranscript = '';
           
@@ -83,6 +111,7 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
               finalTranscript += transcript + ' ';
+              console.log('Final transcript:', transcript);
             } else {
               interimTranscript += transcript;
             }
@@ -91,11 +120,18 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
           if (finalTranscript) {
             transcriptRef.current += finalTranscript;
           }
+          setInterimText(interimTranscript);
         };
 
-        recognitionRef.current.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          if (event.error !== 'no-speech') {
+        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error('Speech recognition error:', event.error, event.message);
+          if (event.error === 'not-allowed') {
+            toast({
+              title: "Microphone access denied",
+              description: "Please allow microphone access in your browser settings.",
+              variant: "destructive",
+            });
+          } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
             toast({
               title: "Speech recognition error",
               description: `Error: ${event.error}`,
@@ -104,21 +140,41 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
           }
         };
 
-        recognitionRef.current.start();
+        recognitionRef.current.onend = () => {
+          console.log('Speech recognition ended, isRecording:', isRecording);
+          // Restart if still recording (browser may stop it)
+          if (isRecording && recognitionRef.current) {
+            try {
+              console.log('Restarting speech recognition...');
+              recognitionRef.current.start();
+            } catch (e) {
+              console.log('Could not restart recognition:', e);
+            }
+          }
+        };
+
+        try {
+          recognitionRef.current.start();
+          console.log('Speech recognition start() called');
+        } catch (e) {
+          console.error('Failed to start speech recognition:', e);
+        }
+      } else {
+        console.warn('Web Speech API not supported');
+        toast({
+          title: "Speech recognition not supported",
+          description: "Please use Chrome or Edge for voice transcription.",
+          variant: "destructive",
+        });
       }
 
-      // Set up media recorder as backup
+      // Set up media recorder (for future audio storage if needed)
       mediaRecorderRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
 
       mediaRecorderRef.current.onstop = () => {
-        stream.getTracks().forEach(track => track.stop());
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
         processTranscription();
       };
 
@@ -264,6 +320,16 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
             : "Touch the quill to begin thy chronicle"
         }
       </p>
+
+      {/* Real-time transcript preview */}
+      {isRecording && (interimText || transcriptRef.current) && (
+        <div className="max-w-md p-3 bg-muted/50 rounded-lg border border-border/50">
+          <p className="font-body text-sm text-foreground">
+            {transcriptRef.current}
+            <span className="text-muted-foreground italic">{interimText}</span>
+          </p>
+        </div>
+      )}
 
       {/* Speech Recognition Support Notice */}
       {!hasSpeechRecognition && (
