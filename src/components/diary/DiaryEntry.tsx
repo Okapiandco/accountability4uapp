@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { ChevronLeft, ChevronRight, Save, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, CalendarDays, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { VoiceRecorder } from './VoiceRecorder';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DiaryEntryProps {
   date: Date;
@@ -14,11 +16,54 @@ interface DiaryEntryProps {
 
 export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
   const [content, setContent] = useState('');
+  const [audioTranscript, setAudioTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [entryId, setEntryId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  const dateString = format(date, 'yyyy-MM-dd');
+
+  // Fetch existing entry for this date
+  const fetchEntry = useCallback(async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('diary_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', dateString)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setContent(data.content || '');
+        setAudioTranscript(data.audio_transcript || '');
+        setEntryId(data.id);
+      } else {
+        setContent('');
+        setAudioTranscript('');
+        setEntryId(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching entry:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, dateString]);
+
+  useEffect(() => {
+    fetchEntry();
+  }, [fetchEntry]);
 
   const handleTranscript = (text: string) => {
     setContent(prev => prev + (prev ? '\n\n' : '') + text);
+    setAudioTranscript(prev => prev + (prev ? '\n\n' : '') + text);
     setIsProcessing(false);
   };
 
@@ -34,12 +79,60 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
     onDateChange(newDate);
   };
 
-  const handleSave = () => {
-    // Will save to database with Lovable Cloud
-    toast({
-      title: "Entry preserved!",
-      description: "Thy chronicle hath been safely stored.",
-    });
+  const handleSave = async () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Not authenticated",
+        description: "Please sign in to save entries.",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (entryId) {
+        // Update existing entry
+        const { error } = await supabase
+          .from('diary_entries')
+          .update({
+            content,
+            audio_transcript: audioTranscript,
+          })
+          .eq('id', entryId);
+
+        if (error) throw error;
+      } else {
+        // Insert new entry
+        const { data, error } = await supabase
+          .from('diary_entries')
+          .insert({
+            user_id: user.id,
+            date: dateString,
+            content,
+            audio_transcript: audioTranscript,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setEntryId(data.id);
+      }
+
+      toast({
+        title: "Entry preserved!",
+        description: "Thy chronicle hath been safely stored.",
+      });
+    } catch (error: any) {
+      console.error('Error saving entry:', error);
+      toast({
+        variant: "destructive",
+        title: "Save failed",
+        description: error.message,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formattedDate = format(date, "EEEE, do 'of' MMMM, yyyy");
@@ -107,20 +200,31 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
             </h3>
             <Button
               onClick={handleSave}
+              disabled={isSaving || isLoading}
               className="bg-gradient-to-r from-burgundy to-burgundy-light hover:shadow-gold"
             >
-              <Save className="w-4 h-4 mr-2" />
-              Preserve
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              {isSaving ? 'Saving...' : 'Preserve'}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="What hath transpired this day? Record thy thoughts, deeds, and musings herein..."
-            className="min-h-[300px] font-body text-lg leading-relaxed bg-parchment/50 border-border focus:border-gold focus:ring-gold/20 resize-none"
-          />
+          {isLoading ? (
+            <div className="min-h-[300px] flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="What hath transpired this day? Record thy thoughts, deeds, and musings herein..."
+              className="min-h-[300px] font-body text-lg leading-relaxed bg-parchment/50 border-border focus:border-gold focus:ring-gold/20 resize-none"
+            />
+          )}
           <p className="mt-2 text-sm text-muted-foreground text-right">
             {content.length} characters inscribed
           </p>
