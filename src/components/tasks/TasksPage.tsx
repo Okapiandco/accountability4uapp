@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Target, Trophy, Plus, Sparkles } from 'lucide-react';
+import { Target, Plus, Sparkles, CalendarDays } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { TaskCard } from './TaskCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +26,7 @@ interface Goal {
   id: string;
   title: string;
   progress: number;
+  targetDate?: string;
   createdAt: Date;
 }
 
@@ -31,6 +35,7 @@ export function TasksPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newGoalTitle, setNewGoalTitle] = useState('');
+  const [newGoalTargetDate, setNewGoalTargetDate] = useState<Date | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -82,6 +87,7 @@ export function TasksPage() {
           id: g.id,
           title: g.title,
           progress: g.progress,
+          targetDate: g.target_date || undefined,
           createdAt: new Date(g.created_at),
         })));
       }
@@ -139,6 +145,7 @@ export function TasksPage() {
         user_id: user.id,
         title: newGoalTitle,
         progress: 0,
+        target_date: newGoalTargetDate ? format(newGoalTargetDate, 'yyyy-MM-dd') : null,
       })
       .select()
       .single();
@@ -156,15 +163,35 @@ export function TasksPage() {
       id: data.id,
       title: data.title,
       progress: data.progress,
+      targetDate: data.target_date || undefined,
       createdAt: new Date(data.created_at),
     };
     
     setGoals(prev => [newGoal, ...prev]);
     setNewGoalTitle('');
+    setNewGoalTargetDate(undefined);
     toast({
       title: "Ambition declared!",
       description: "Thy grand goal hath been recorded.",
     });
+  };
+
+  const updateGoalTargetDate = async (id: string, date: Date | undefined) => {
+    const { error } = await supabase
+      .from('goals')
+      .update({ target_date: date ? format(date, 'yyyy-MM-dd') : null })
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error updating goal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, targetDate: date ? format(date, 'yyyy-MM-dd') : undefined } : g));
   };
 
   const updateTask = async (updatedTask: Task) => {
@@ -341,7 +368,7 @@ export function TasksPage() {
 
           {/* Add Goal Form */}
           <Card className="bg-card border-2 border-gold/20">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-3">
               <div className="flex gap-2">
                 <Input
                   value={newGoalTitle}
@@ -358,6 +385,22 @@ export function TasksPage() {
                   Add
                 </Button>
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {newGoalTargetDate ? format(newGoalTargetDate, 'PPP') : <span className="text-muted-foreground">Set target date (optional)</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newGoalTargetDate}
+                    onSelect={setNewGoalTargetDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </CardContent>
           </Card>
 
@@ -376,6 +419,30 @@ export function TasksPage() {
                     >
                       ×
                     </Button>
+                  </div>
+                  
+                  {/* Target Date */}
+                  <div className="mb-4">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal">
+                          <CalendarDays className="mr-2 h-4 w-4" />
+                          {goal.targetDate ? (
+                            <span>Target: {format(new Date(goal.targetDate), 'PPP')}</span>
+                          ) : (
+                            <span className="text-muted-foreground">Set target date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={goal.targetDate ? new Date(goal.targetDate) : undefined}
+                          onSelect={(date) => updateGoalTargetDate(goal.id, date)}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   
                   <div className="space-y-3">
