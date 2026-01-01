@@ -126,8 +126,12 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          last_recurrence_date: string | null
+          parent_task_id: string | null
           priority: string | null
           progress: number
+          recurrence: string | null
+          recurrence_end_date: string | null
           title: string
           user_id: string
         }
@@ -138,8 +142,12 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          last_recurrence_date?: string | null
+          parent_task_id?: string | null
           priority?: string | null
           progress?: number
+          recurrence?: string | null
+          recurrence_end_date?: string | null
           title: string
           user_id: string
         }
@@ -150,12 +158,24 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          last_recurrence_date?: string | null
+          parent_task_id?: string | null
           priority?: string | null
           progress?: number
+          recurrence?: string | null
+          recurrence_end_date?: string | null
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
