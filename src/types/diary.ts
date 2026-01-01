@@ -8,6 +8,7 @@ export interface DiaryEntry {
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskCategory = 'work' | 'health' | 'personal' | 'learning' | 'finance' | 'other';
 
 export interface Task {
   id: string;
@@ -16,6 +17,7 @@ export interface Task {
   progress: number;
   dueDate?: string;
   priority: TaskPriority;
+  category?: TaskCategory;
   completed: boolean;
   createdAt: Date;
 }

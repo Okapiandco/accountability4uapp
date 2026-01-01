@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { Task, TaskPriority } from '@/types/diary';
+import type { Task, TaskPriority, TaskCategory } from '@/types/diary';
 
 interface TaskCardProps {
   task: Task;
@@ -27,6 +27,15 @@ const priorityBorderColors = {
   low: 'border-l-green-500',
   medium: 'border-l-yellow-500',
   high: 'border-l-red-500',
+};
+
+const categoryLabels: Record<TaskCategory, string> = {
+  work: '💼 Work',
+  health: '🏃 Health',
+  personal: '🏠 Personal',
+  learning: '📚 Learning',
+  finance: '💰 Finance',
+  other: '📌 Other',
 };
 
 export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
@@ -57,6 +66,10 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
 
   const handlePriorityChange = (priority: TaskPriority) => {
     onUpdate({ ...task, priority });
+  };
+
+  const handleCategoryChange = (category: TaskCategory | undefined) => {
+    onUpdate({ ...task, category });
   };
 
   return (
@@ -102,19 +115,26 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 mb-3">
-                <h4 
-                  className={cn(
-                    "font-body text-lg leading-tight",
-                    task.completed && "line-through text-muted-foreground"
-                  )}
-                >
-                  {task.title}
-                </h4>
-                <span className={cn(
-                  "w-2 h-2 rounded-full flex-shrink-0",
-                  priorityColors[task.priority]
-                )} />
+              <div className="mb-3">
+                <div className="flex items-center gap-2">
+                  <h4 
+                    className={cn(
+                      "font-body text-lg leading-tight",
+                      task.completed && "line-through text-muted-foreground"
+                    )}
+                  >
+                    {task.title}
+                  </h4>
+                  <span className={cn(
+                    "w-2 h-2 rounded-full flex-shrink-0",
+                    priorityColors[task.priority]
+                  )} />
+                </div>
+                {task.category && (
+                  <span className="text-xs text-muted-foreground font-body">
+                    {categoryLabels[task.category]}
+                  </span>
+                )}
               </div>
             )}
 
@@ -140,12 +160,12 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
               </div>
             )}
 
-            {/* Due Date & Priority */}
+            {/* Due Date & Priority & Category */}
             {!isEditing && (
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3 space-y-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 justify-start text-left font-normal">
+                    <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal">
                       <CalendarDays className="mr-2 h-4 w-4" />
                       {task.dueDate ? (
                         <span>Due: {format(new Date(task.dueDate), 'PPP')}</span>
@@ -163,31 +183,46 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
                     />
                   </PopoverContent>
                 </Popover>
-                <Select value={task.priority} onValueChange={(v) => handlePriorityChange(v as TaskPriority)}>
-                  <SelectTrigger className="w-[130px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500" />
-                        Low
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="medium">
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-yellow-500" />
-                        Medium
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="high">
-                      <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500" />
-                        High
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={task.priority} onValueChange={(v) => handlePriorityChange(v as TaskPriority)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-green-500" />
+                          Low
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="medium">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                          Medium
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="high">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-red-500" />
+                          High
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={task.category || ''} onValueChange={(v) => handleCategoryChange(v as TaskCategory || undefined)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="work">💼 Work</SelectItem>
+                      <SelectItem value="health">🏃 Health</SelectItem>
+                      <SelectItem value="personal">🏠 Personal</SelectItem>
+                      <SelectItem value="learning">📚 Learning</SelectItem>
+                      <SelectItem value="finance">💰 Finance</SelectItem>
+                      <SelectItem value="other">📌 Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
           </div>

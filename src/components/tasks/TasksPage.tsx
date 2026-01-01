@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TaskCard } from './TaskCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { TaskPriority } from '@/types/diary';
+import type { TaskPriority, TaskCategory } from '@/types/diary';
 
 interface Task {
   id: string;
@@ -22,6 +22,7 @@ interface Task {
   completed: boolean;
   dueDate?: string;
   priority: TaskPriority;
+  category?: TaskCategory;
   createdAt: Date;
 }
 
@@ -39,6 +40,7 @@ export function TasksPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
+  const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory | undefined>(undefined);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTargetDate, setNewGoalTargetDate] = useState<Date | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,6 +75,7 @@ export function TasksPage() {
           completed: t.completed,
           dueDate: t.due_date || undefined,
           priority: (t.priority as TaskPriority) || 'medium',
+          category: (t.category as TaskCategory) || undefined,
           createdAt: new Date(t.created_at),
         })));
       }
@@ -115,6 +118,7 @@ export function TasksPage() {
         completed: false,
         due_date: newTaskDueDate ? format(newTaskDueDate, 'yyyy-MM-dd') : null,
         priority: newTaskPriority,
+        category: newTaskCategory || null,
       })
       .select()
       .single();
@@ -135,6 +139,7 @@ export function TasksPage() {
       completed: data.completed,
       dueDate: data.due_date || undefined,
       priority: (data.priority as TaskPriority) || 'medium',
+      category: (data.category as TaskCategory) || undefined,
       createdAt: new Date(data.created_at),
     };
     
@@ -142,6 +147,7 @@ export function TasksPage() {
     setNewTaskTitle('');
     setNewTaskDueDate(undefined);
     setNewTaskPriority('medium');
+    setNewTaskCategory(undefined);
     toast({
       title: "Quest added!",
       description: "A new endeavour awaits thee.",
@@ -216,6 +222,7 @@ export function TasksPage() {
         completed: updatedTask.completed,
         due_date: updatedTask.dueDate,
         priority: updatedTask.priority,
+        category: updatedTask.category || null,
       })
       .eq('id', updatedTask.id);
 
@@ -367,31 +374,46 @@ export function TasksPage() {
                   />
                 </PopoverContent>
               </Popover>
-              <Select value={newTaskPriority} onValueChange={(v) => setNewTaskPriority(v as TaskPriority)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                      Low Priority
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="medium">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-yellow-500" />
-                      Medium Priority
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="high">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-red-500" />
-                      High Priority
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={newTaskPriority} onValueChange={(v) => setNewTaskPriority(v as TaskPriority)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Low
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                        Medium
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="high">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        High
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={newTaskCategory || ''} onValueChange={(v) => setNewTaskCategory(v as TaskCategory || undefined)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Category (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="work">💼 Work</SelectItem>
+                    <SelectItem value="health">🏃 Health</SelectItem>
+                    <SelectItem value="personal">🏠 Personal</SelectItem>
+                    <SelectItem value="learning">📚 Learning</SelectItem>
+                    <SelectItem value="finance">💰 Finance</SelectItem>
+                    <SelectItem value="other">📌 Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
 
