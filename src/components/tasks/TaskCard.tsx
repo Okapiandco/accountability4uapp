@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Check, Trash2, Edit2, X, Save } from 'lucide-react';
+import { Check, Trash2, Edit2, X, Save, CalendarDays } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Task } from '@/types/diary';
 
@@ -114,10 +117,29 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
             )}
 
             {/* Due Date */}
-            {task.dueDate && !isEditing && (
-              <p className="mt-2 text-sm text-muted-foreground font-body italic">
-                Due: {task.dueDate}
-              </p>
+            {!isEditing && (
+              <div className="mt-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal">
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      {task.dueDate ? (
+                        <span>Due: {format(new Date(task.dueDate), 'PPP')}</span>
+                      ) : (
+                        <span className="text-muted-foreground">Set due date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={task.dueDate ? new Date(task.dueDate) : undefined}
+                      onSelect={(date) => onUpdate({ ...task, dueDate: date ? format(date, 'yyyy-MM-dd') : undefined })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             )}
           </div>
 
