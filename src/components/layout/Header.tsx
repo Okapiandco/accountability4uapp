@@ -1,4 +1,4 @@
-import { Feather, BookOpen, Target, FolderOpen, Menu, X } from 'lucide-react';
+import { Feather, BookOpen, Target, FolderOpen, Menu, X, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ interface HeaderProps {
 const navItems = [
   { id: 'diary', label: 'Daily Chronicle', icon: BookOpen },
   { id: 'tasks', label: 'Quests & Endeavours', icon: Target },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'projects', label: 'Archives', icon: FolderOpen },
 ];
 
