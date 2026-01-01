@@ -1,40 +1,125 @@
-import { useState } from 'react';
-import { Plus, Target, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Target, Trophy, Plus, Sparkles } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { TaskCard } from './TaskCard';
 import { Slider } from '@/components/ui/slider';
-import type { Task, Goal } from '@/types/diary';
 import { useToast } from '@/hooks/use-toast';
+import { TaskCard } from './TaskCard';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-const initialTasks: Task[] = [
-  { id: '1', title: 'Complete the morning meditation', progress: 60, completed: false, createdAt: new Date() },
-  { id: '2', title: 'Read a chapter of philosophy', progress: 100, completed: true, createdAt: new Date() },
-  { id: '3', title: 'Practice thy craft for one hour', progress: 30, completed: false, createdAt: new Date() },
-];
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  progress: number;
+  completed: boolean;
+  dueDate?: string;
+  createdAt: Date;
+}
 
-const initialGoals: Goal[] = [
-  { id: '1', title: 'Master the art of public speaking', progress: 45, createdAt: new Date() },
-  { id: '2', title: 'Complete 365 days of journaling', progress: 12, createdAt: new Date() },
-];
+interface Goal {
+  id: string;
+  title: string;
+  progress: number;
+  createdAt: Date;
+}
 
 export function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [goals, setGoals] = useState<Goal[]>(initialGoals);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newGoalTitle, setNewGoalTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const addTask = () => {
-    if (!newTaskTitle.trim()) return;
+  // Fetch tasks from database
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchTasks = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching tasks:', error);
+        toast({
+          title: "Error loading tasks",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setTasks(data.map(t => ({
+          id: t.id,
+          title: t.title,
+          description: t.description || undefined,
+          progress: t.progress,
+          completed: t.completed,
+          dueDate: t.due_date || undefined,
+          createdAt: new Date(t.created_at),
+        })));
+      }
+      setIsLoading(false);
+    };
+
+    const fetchGoals = async () => {
+      const { data, error } = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching goals:', error);
+      } else {
+        setGoals(data.map(g => ({
+          id: g.id,
+          title: g.title,
+          progress: g.progress,
+          createdAt: new Date(g.created_at),
+        })));
+      }
+    };
+
+    fetchTasks();
+    fetchGoals();
+  }, [user, toast]);
+
+  const addTask = async () => {
+    if (!newTaskTitle.trim() || !user) return;
     
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: user.id,
+        title: newTaskTitle,
+        progress: 0,
+        completed: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error adding task",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newTask: Task = {
-      id: Date.now().toString(),
-      title: newTaskTitle,
-      progress: 0,
-      completed: false,
-      createdAt: new Date(),
+      id: data.id,
+      title: data.title,
+      progress: data.progress,
+      completed: data.completed,
+      createdAt: new Date(data.created_at),
     };
     
     setTasks(prev => [newTask, ...prev]);
@@ -45,14 +130,33 @@ export function TasksPage() {
     });
   };
 
-  const addGoal = () => {
-    if (!newGoalTitle.trim()) return;
+  const addGoal = async () => {
+    if (!newGoalTitle.trim() || !user) return;
     
+    const { data, error } = await supabase
+      .from('goals')
+      .insert({
+        user_id: user.id,
+        title: newGoalTitle,
+        progress: 0,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Error adding goal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newGoal: Goal = {
-      id: Date.now().toString(),
-      title: newGoalTitle,
-      progress: 0,
-      createdAt: new Date(),
+      id: data.id,
+      title: data.title,
+      progress: data.progress,
+      createdAt: new Date(data.created_at),
     };
     
     setGoals(prev => [newGoal, ...prev]);
@@ -63,11 +167,45 @@ export function TasksPage() {
     });
   };
 
-  const updateTask = (updatedTask: Task) => {
+  const updateTask = async (updatedTask: Task) => {
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        title: updatedTask.title,
+        description: updatedTask.description,
+        progress: updatedTask.progress,
+        completed: updatedTask.completed,
+        due_date: updatedTask.dueDate,
+      })
+      .eq('id', updatedTask.id);
+
+    if (error) {
+      toast({
+        title: "Error updating task",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
   };
 
-  const deleteTask = (id: string) => {
+  const deleteTask = async (id: string) => {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error deleting task",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setTasks(prev => prev.filter(t => t.id !== id));
     toast({
       title: "Quest removed",
@@ -75,11 +213,39 @@ export function TasksPage() {
     });
   };
 
-  const updateGoalProgress = (id: string, progress: number) => {
+  const updateGoalProgress = async (id: string, progress: number) => {
+    const { error } = await supabase
+      .from('goals')
+      .update({ progress })
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error updating goal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGoals(prev => prev.map(g => g.id === id ? { ...g, progress } : g));
   };
 
-  const deleteGoal = (id: string) => {
+  const deleteGoal = async (id: string) => {
+    const { error } = await supabase
+      .from('goals')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast({
+        title: "Error deleting goal",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGoals(prev => prev.filter(g => g.id !== id));
   };
 
