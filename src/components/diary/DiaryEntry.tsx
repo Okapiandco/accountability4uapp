@@ -3,7 +3,6 @@ import { format } from 'date-fns';
 import { ChevronLeft, ChevronRight, Save, CalendarDays, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { VoiceRecorder } from './VoiceRecorder';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,8 +15,6 @@ interface DiaryEntryProps {
 
 export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
   const [content, setContent] = useState('');
-  const [audioTranscript, setAudioTranscript] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [entryId, setEntryId] = useState<string | null>(null);
@@ -43,11 +40,9 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
 
       if (data) {
         setContent(data.content || '');
-        setAudioTranscript(data.audio_transcript || '');
         setEntryId(data.id);
       } else {
         setContent('');
-        setAudioTranscript('');
         setEntryId(null);
       }
     } catch (error: any) {
@@ -60,12 +55,6 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
   useEffect(() => {
     fetchEntry();
   }, [fetchEntry]);
-
-  const handleTranscript = (text: string) => {
-    setContent(prev => prev + (prev ? '\n\n' : '') + text);
-    setAudioTranscript(prev => prev + (prev ? '\n\n' : '') + text);
-    setIsProcessing(false);
-  };
 
   const handlePreviousDay = () => {
     const newDate = new Date(date);
@@ -97,7 +86,6 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
           .from('diary_entries')
           .update({
             content,
-            audio_transcript: audioTranscript,
           })
           .eq('id', entryId);
 
@@ -110,7 +98,6 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
             user_id: user.id,
             date: dateString,
             content,
-            audio_transcript: audioTranscript,
           })
           .select()
           .single();
@@ -118,7 +105,6 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
         if (error) throw error;
         setEntryId(data.id);
       }
-
       toast({
         title: "Entry preserved!",
         description: "Thy chronicle hath been safely stored.",
@@ -173,23 +159,6 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
         </Button>
       </div>
 
-      {/* Voice Recorder */}
-      <Card className="bg-card border-2 border-gold/20 shadow-parchment">
-        <CardHeader className="text-center pb-2">
-          <h3 className="font-display text-lg text-foreground">
-            Speak Thy Mind
-          </h3>
-          <p className="text-sm text-muted-foreground font-body italic">
-            "Give every thought a tongue, every tongue its freedom"
-          </p>
-        </CardHeader>
-        <CardContent>
-          <VoiceRecorder 
-            onTranscript={handleTranscript}
-            isProcessing={isProcessing}
-          />
-        </CardContent>
-      </Card>
 
       {/* Entry Content */}
       <Card className="bg-card border-2 border-gold/20 shadow-parchment">
