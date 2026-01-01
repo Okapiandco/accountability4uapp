@@ -494,13 +494,13 @@ export function TasksPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Select value={newTaskRecurrence || ''} onValueChange={(v) => setNewTaskRecurrence(v as TaskRecurrence || undefined)}>
+                <Select value={newTaskRecurrence || 'none'} onValueChange={(v) => setNewTaskRecurrence(v === 'none' ? undefined : v as TaskRecurrence)}>
                 <SelectTrigger className="w-full">
                   <Repeat className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="No recurrence (one-time task)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No recurrence</SelectItem>
+                  <SelectItem value="none">No recurrence</SelectItem>
                   <SelectItem value="daily">🔄 Repeats Daily</SelectItem>
                   <SelectItem value="weekly">📅 Repeats Weekly</SelectItem>
                   <SelectItem value="monthly">🗓️ Repeats Monthly</SelectItem>
