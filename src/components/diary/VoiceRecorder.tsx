@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,29 +12,15 @@ interface VoiceRecorderProps {
 
 export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const isRecordingRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [interimText, setInterimText] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const transcriptRef = useRef<string>('');
+  const chunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
-
-  useEffect(() => {
-    isRecordingRef.current = isRecording;
-  }, [isRecording]);
-
-  // Check for Web Speech API support
-  const getSpeechRecognition = useCallback(() => {
-    return window.SpeechRecognition || window.webkitSpeechRecognition;
-  }, []);
-
-  const hasSpeechRecognition = !!getSpeechRecognition();
 
   useEffect(() => {
     return () => {
@@ -43,13 +29,6 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
       }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
-      }
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {
-          // Ignore errors on cleanup
-        }
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -60,22 +39,18 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
   const startRecording = async () => {
     try {
       console.log('Starting recording...');
-      console.log('Speech Recognition available:', hasSpeechRecognition);
-
-      // Mark recording immediately so SpeechRecognition onend can restart reliably
-      setIsRecording(true);
-      isRecordingRef.current = true;
-      transcriptRef.current = '';
-      setInterimText('');
+      chunksRef.current = [];
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 16000,
         }
       });
       streamRef.current = stream;
+      console.log('Got media stream');
 
       // Set up audio analysis for visualization
       audioContextRef.current = new AudioContext();
@@ -97,95 +72,32 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
       };
       updateLevel();
 
-      // Set up Web Speech API for real-time transcription
-      const SpeechRecognitionAPI = getSpeechRecognition();
-      if (SpeechRecognitionAPI) {
-        console.log('Initializing Speech Recognition...');
-        recognitionRef.current = new SpeechRecognitionAPI();
-        recognitionRef.current.continuous = true;
-        recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = 'en-US';
+      // Set up media recorder to capture audio
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') 
+        ? 'audio/webm' 
+        : 'audio/mp4';
+      
+      console.log('Using MIME type:', mimeType);
+      
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
 
-        recognitionRef.current.onstart = () => {
-          console.log('Speech recognition started');
-        };
-
-        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-          console.log('Speech recognition result received', event.results.length);
-          let finalTranscript = '';
-          let interimTranscript = '';
-
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              finalTranscript += transcript + ' ';
-              console.log('Final transcript:', transcript);
-            } else {
-              interimTranscript += transcript;
-            }
-          }
-
-          if (finalTranscript) {
-            transcriptRef.current += finalTranscript;
-          }
-          setInterimText(interimTranscript);
-        };
-
-        recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-          console.error('Speech recognition error:', event.error, event.message);
-          if (event.error === 'not-allowed') {
-            toast({
-              title: "Microphone access denied",
-              description: "Please allow microphone access in your browser settings.",
-              variant: "destructive",
-            });
-          } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            toast({
-              title: "Speech recognition error",
-              description: `Error: ${event.error}`,
-              variant: "destructive",
-            });
-          }
-        };
-
-        recognitionRef.current.onend = () => {
-          console.log('Speech recognition ended, isRecordingRef:', isRecordingRef.current);
-          if (isRecordingRef.current && recognitionRef.current) {
-            try {
-              console.log('Restarting speech recognition...');
-              recognitionRef.current.start();
-            } catch (e) {
-              console.log('Could not restart recognition:', e);
-            }
-          }
-        };
-
-        try {
-          recognitionRef.current.start();
-          console.log('Speech recognition start() called');
-        } catch (e) {
-          console.error('Failed to start speech recognition:', e);
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        console.log('Data available:', event.data.size, 'bytes');
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
         }
-      } else {
-        console.warn('Web Speech API not supported');
-        toast({
-          title: "Speech recognition not supported",
-          description: "Please use Chrome or Edge for voice transcription.",
-          variant: "destructive",
-        });
-      }
+      };
 
-      // Set up media recorder (for future audio storage if needed)
-      mediaRecorderRef.current = new MediaRecorder(stream);
-
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.onstop = async () => {
+        console.log('Recording stopped, processing audio...');
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
         }
-        processTranscription();
+        await processAudio();
       };
 
-      mediaRecorderRef.current.start();
+      mediaRecorderRef.current.start(1000); // Collect data every second
+      setIsRecording(true);
 
       toast({
         title: "Recording hath begun",
@@ -193,8 +105,6 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
       });
     } catch (error) {
       console.error('Error accessing microphone:', error);
-      setIsRecording(false);
-      isRecordingRef.current = false;
       toast({
         title: "Alas! Microphone access denied",
         description: "Prithee grant permission to use thy microphone.",
@@ -205,14 +115,10 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
+      console.log('Stopping recording...');
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      isRecordingRef.current = false;
       setAudioLevel(0);
-
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
 
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -223,19 +129,71 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
     }
   };
 
-  const processTranscription = async () => {
+  const processAudio = async () => {
+    if (chunksRef.current.length === 0) {
+      console.log('No audio chunks recorded');
+      toast({
+        title: "No audio recorded",
+        description: "Please try again and speak into the microphone.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
-    
+
     toast({
       title: "Processing thy words...",
       description: "The scribe is at work transcribing thy speech.",
     });
 
     try {
-      // Use the transcript from Web Speech API
-      const rawTranscript = transcriptRef.current.trim();
-      
-      if (!rawTranscript) {
+      const audioBlob = new Blob(chunksRef.current, { type: chunksRef.current[0].type });
+      console.log('Audio blob created:', audioBlob.size, 'bytes, type:', audioBlob.type);
+
+      if (audioBlob.size < 1000) {
+        toast({
+          title: "Recording too short",
+          description: "Please speak for a bit longer.",
+          variant: "destructive",
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // Create FormData and send to edge function
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      console.log('Sending audio to transcription service...');
+
+      // Get the Supabase URL and key for the fetch request
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/transcribe`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseKey}`,
+          'apikey': supabaseKey,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Transcription API error:', response.status, errorText);
+        throw new Error(`Transcription failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Transcription response:', data);
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data.text || data.text.trim() === '') {
         toast({
           title: "No speech detected",
           description: "Speak louder or try again, good chronicler.",
@@ -245,44 +203,22 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
         return;
       }
 
-      // Enhance the transcript using AI
-      const { data, error } = await supabase.functions.invoke('transcribe', {
-        body: { 
-          audio: rawTranscript,
-          rawText: rawTranscript 
-        }
+      onTranscript(data.text);
+      toast({
+        title: "Chronicle inscribed!",
+        description: "Thy words have been transcribed with care.",
       });
 
-      if (error) {
-        console.error('Transcription error:', error);
-        // Fallback to raw transcript if AI enhancement fails
-        onTranscript(rawTranscript);
-        toast({
-          title: "Words captured!",
-          description: "Thy speech hath been recorded.",
-        });
-      } else {
-        // Use AI-enhanced text or fall back to raw
-        const finalText = data?.text || rawTranscript;
-        onTranscript(finalText);
-        toast({
-          title: "Chronicle inscribed!",
-          description: "Thy words have been transcribed with care.",
-        });
-      }
     } catch (error) {
       console.error('Processing error:', error);
-      // Fallback to raw transcript
-      if (transcriptRef.current.trim()) {
-        onTranscript(transcriptRef.current.trim());
-      }
       toast({
-        title: "Partial transcription",
-        description: "Some words were captured, though the scribe struggled.",
+        title: "Transcription failed",
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
+      chunksRef.current = [];
     }
   };
 
@@ -294,19 +230,19 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
       <div className="relative">
         {/* Animated glow ring */}
         {isRecording && (
-          <div 
+          <div
             className="absolute inset-0 rounded-full bg-burgundy/30 animate-ping"
             style={{ transform: `scale(${1 + audioLevel * 0.5})` }}
           />
         )}
-        
+
         <Button
           onClick={isRecording ? stopRecording : startRecording}
           disabled={processing}
           className={cn(
             "relative w-20 h-20 rounded-full transition-all duration-300 shadow-lg",
-            isRecording 
-              ? "bg-destructive hover:bg-destructive/90 shadow-[0_0_30px_hsl(var(--destructive)/0.5)]" 
+            isRecording
+              ? "bg-destructive hover:bg-destructive/90 shadow-[0_0_30px_hsl(var(--destructive)/0.5)]"
               : "bg-gradient-to-br from-burgundy to-burgundy-light hover:shadow-gold"
           )}
         >
@@ -322,30 +258,13 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
 
       {/* Status Text */}
       <p className="font-body text-lg text-muted-foreground italic text-center">
-        {processing 
+        {processing
           ? "The scribe transcribes thy words..."
-          : isRecording 
+          : isRecording
             ? "Speak now, thy words are being captured..."
             : "Touch the quill to begin thy chronicle"
         }
       </p>
-
-      {/* Real-time transcript preview */}
-      {isRecording && (interimText || transcriptRef.current) && (
-        <div className="max-w-md p-3 bg-muted/50 rounded-lg border border-border/50">
-          <p className="font-body text-sm text-foreground">
-            {transcriptRef.current}
-            <span className="text-muted-foreground italic">{interimText}</span>
-          </p>
-        </div>
-      )}
-
-      {/* Speech Recognition Support Notice */}
-      {!hasSpeechRecognition && (
-        <p className="text-sm text-muted-foreground text-center max-w-xs">
-          For best results, use Chrome or Edge browser for voice transcription.
-        </p>
-      )}
 
       {/* Audio Level Visualization */}
       {isRecording && (

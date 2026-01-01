@@ -11,73 +11,47 @@ serve(async (req) => {
   }
 
   try {
-    const { audio } = await req.json();
+    const formData = await req.formData();
+    const audioFile = formData.get("audio") as File;
     
-    if (!audio) {
-      throw new Error('No audio data provided');
+    if (!audioFile) {
+      throw new Error('No audio file provided');
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    console.log('Received audio file:', audioFile.name, 'size:', audioFile.size, 'type:', audioFile.type);
+
+    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
+    if (!ELEVENLABS_API_KEY) {
+      throw new Error('ELEVENLABS_API_KEY is not configured');
     }
 
-    // Convert base64 audio to description for AI transcription
-    // Since Lovable AI doesn't have direct audio transcription, we'll use 
-    // the browser's Web Speech API for transcription and use AI for enhancement
-    
-    // For now, we'll use the Gemini model with a prompt to simulate transcription
-    // In production, you'd use a proper speech-to-text service
-    
-    console.log('Received audio data, length:', audio.length);
+    // Use ElevenLabs Scribe for transcription
+    const apiFormData = new FormData();
+    apiFormData.append("file", audioFile);
+    apiFormData.append("model_id", "scribe_v1");
+    apiFormData.append("language_code", "eng");
 
-    // Use Lovable AI to enhance/clean up transcribed text
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    console.log('Sending to ElevenLabs Scribe API...');
+
+    const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "xi-api-key": ELEVENLABS_API_KEY,
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { 
-            role: "system", 
-            content: "You are a helpful assistant that processes diary entries. When given raw transcribed text, clean it up, fix grammar, and make it flow naturally while preserving the original meaning and voice. Keep the tone personal and diary-like." 
-          },
-          { 
-            role: "user", 
-            content: "The user has recorded a voice diary entry. Please acknowledge that voice recording was received and provide a placeholder response. In a full implementation, this would be transcribed audio." 
-          }
-        ],
-      }),
+      body: apiFormData,
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Usage limit reached. Please add credits." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("ElevenLabs API error:", response.status, errorText);
+      throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || "Unable to process audio";
-
-    console.log('Transcription result:', text);
+    const transcription = await response.json();
+    console.log('Transcription result:', transcription);
 
     return new Response(
-      JSON.stringify({ text }),
+      JSON.stringify({ text: transcription.text || '' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
