@@ -34,6 +34,7 @@ export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTargetDate, setNewGoalTargetDate] = useState<Date | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -107,6 +108,7 @@ export function TasksPage() {
         title: newTaskTitle,
         progress: 0,
         completed: false,
+        due_date: newTaskDueDate ? format(newTaskDueDate, 'yyyy-MM-dd') : null,
       })
       .select()
       .single();
@@ -125,11 +127,13 @@ export function TasksPage() {
       title: data.title,
       progress: data.progress,
       completed: data.completed,
+      dueDate: data.due_date || undefined,
       createdAt: new Date(data.created_at),
     };
     
     setTasks(prev => [newTask, ...prev]);
     setNewTaskTitle('');
+    setNewTaskDueDate(undefined);
     toast({
       title: "Quest added!",
       description: "A new endeavour awaits thee.",
@@ -321,7 +325,7 @@ export function TasksPage() {
 
           {/* Add Task Form */}
           <Card className="bg-card border-2 border-gold/20">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-3">
               <div className="flex gap-2">
                 <Input
                   value={newTaskTitle}
@@ -338,6 +342,22 @@ export function TasksPage() {
                   Add
                 </Button>
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {newTaskDueDate ? format(newTaskDueDate, 'PPP') : <span className="text-muted-foreground">Set due date (optional)</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newTaskDueDate}
+                    onSelect={setNewTaskDueDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </CardContent>
           </Card>
 
