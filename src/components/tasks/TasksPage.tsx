@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Target, Plus, Sparkles, CalendarDays, Filter } from 'lucide-react';
+import { Target, Plus, Sparkles, CalendarDays, Filter, Repeat } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TaskCard } from './TaskCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { TaskPriority, TaskCategory } from '@/types/diary';
+import type { TaskPriority, TaskCategory, TaskRecurrence } from '@/types/diary';
 
 interface Task {
   id: string;
@@ -23,6 +23,8 @@ interface Task {
   dueDate?: string;
   priority: TaskPriority;
   category?: TaskCategory;
+  recurrence?: TaskRecurrence;
+  parentTaskId?: string;
   createdAt: Date;
 }
 
@@ -41,6 +43,7 @@ export function TasksPage() {
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
   const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory | undefined>(undefined);
+  const [newTaskRecurrence, setNewTaskRecurrence] = useState<TaskRecurrence | undefined>(undefined);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTargetDate, setNewGoalTargetDate] = useState<Date | undefined>(undefined);
   const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
@@ -78,6 +81,8 @@ export function TasksPage() {
           dueDate: t.due_date || undefined,
           priority: (t.priority as TaskPriority) || 'medium',
           category: (t.category as TaskCategory) || undefined,
+          recurrence: (t.recurrence as TaskRecurrence) || undefined,
+          parentTaskId: t.parent_task_id || undefined,
           createdAt: new Date(t.created_at),
         })));
       }
@@ -121,6 +126,7 @@ export function TasksPage() {
         due_date: newTaskDueDate ? format(newTaskDueDate, 'yyyy-MM-dd') : null,
         priority: newTaskPriority,
         category: newTaskCategory || null,
+        recurrence: newTaskRecurrence || null,
       })
       .select()
       .single();
@@ -142,6 +148,7 @@ export function TasksPage() {
       dueDate: data.due_date || undefined,
       priority: (data.priority as TaskPriority) || 'medium',
       category: (data.category as TaskCategory) || undefined,
+      recurrence: (data.recurrence as TaskRecurrence) || undefined,
       createdAt: new Date(data.created_at),
     };
     
@@ -150,9 +157,10 @@ export function TasksPage() {
     setNewTaskDueDate(undefined);
     setNewTaskPriority('medium');
     setNewTaskCategory(undefined);
+    setNewTaskRecurrence(undefined);
     toast({
       title: "Quest added!",
-      description: "A new endeavour awaits thee.",
+      description: newTaskRecurrence ? `This quest shall repeat ${newTaskRecurrence}.` : "A new endeavour awaits thee.",
     });
   };
 
@@ -486,6 +494,18 @@ export function TasksPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <Select value={newTaskRecurrence || ''} onValueChange={(v) => setNewTaskRecurrence(v as TaskRecurrence || undefined)}>
+                <SelectTrigger className="w-full">
+                  <Repeat className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="No recurrence (one-time task)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No recurrence</SelectItem>
+                  <SelectItem value="daily">🔄 Repeats Daily</SelectItem>
+                  <SelectItem value="weekly">📅 Repeats Weekly</SelectItem>
+                  <SelectItem value="monthly">🗓️ Repeats Monthly</SelectItem>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
 

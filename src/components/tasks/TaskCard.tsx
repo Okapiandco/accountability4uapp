@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Trash2, Edit2, X, Save, CalendarDays } from 'lucide-react';
+import { Check, Trash2, Edit2, X, Save, CalendarDays, Repeat } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { Task, TaskPriority, TaskCategory } from '@/types/diary';
+import type { Task, TaskPriority, TaskCategory, TaskRecurrence } from '@/types/diary';
 
 interface TaskCardProps {
   task: Task;
@@ -36,6 +36,12 @@ const categoryLabels: Record<TaskCategory, string> = {
   learning: '📚 Learning',
   finance: '💰 Finance',
   other: '📌 Other',
+};
+
+const recurrenceLabels: Record<TaskRecurrence, string> = {
+  daily: '🔄 Daily',
+  weekly: '📅 Weekly',
+  monthly: '🗓️ Monthly',
 };
 
 export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
@@ -129,12 +135,25 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
                     "w-2 h-2 rounded-full flex-shrink-0",
                     priorityColors[task.priority]
                   )} />
+                  {task.recurrence && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      <Repeat className="w-3 h-3" />
+                      {recurrenceLabels[task.recurrence]}
+                    </span>
+                  )}
                 </div>
-                {task.category && (
-                  <span className="text-xs text-muted-foreground font-body">
-                    {categoryLabels[task.category]}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {task.category && (
+                    <span className="text-xs text-muted-foreground font-body">
+                      {categoryLabels[task.category]}
+                    </span>
+                  )}
+                  {task.parentTaskId && (
+                    <span className="text-xs text-muted-foreground font-body italic">
+                      (recurring instance)
+                    </span>
+                  )}
+                </div>
               </div>
             )}
 

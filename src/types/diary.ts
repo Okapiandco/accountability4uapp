@@ -9,6 +9,7 @@ export interface DiaryEntry {
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskCategory = 'work' | 'health' | 'personal' | 'learning' | 'finance' | 'other';
+export type TaskRecurrence = 'daily' | 'weekly' | 'monthly';
 
 export interface Task {
   id: string;
@@ -18,6 +19,9 @@ export interface Task {
   dueDate?: string;
   priority: TaskPriority;
   category?: TaskCategory;
+  recurrence?: TaskRecurrence;
+  recurrenceEndDate?: string;
+  parentTaskId?: string;
   completed: boolean;
   createdAt: Date;
 }
