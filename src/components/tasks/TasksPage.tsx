@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { TaskCard } from './TaskCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import type { TaskPriority } from '@/types/diary';
 
 interface Task {
   id: string;
@@ -19,6 +21,7 @@ interface Task {
   progress: number;
   completed: boolean;
   dueDate?: string;
+  priority: TaskPriority;
   createdAt: Date;
 }
 
@@ -35,6 +38,7 @@ export function TasksPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState<Date | undefined>(undefined);
+  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTargetDate, setNewGoalTargetDate] = useState<Date | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +72,7 @@ export function TasksPage() {
           progress: t.progress,
           completed: t.completed,
           dueDate: t.due_date || undefined,
+          priority: (t.priority as TaskPriority) || 'medium',
           createdAt: new Date(t.created_at),
         })));
       }
@@ -109,6 +114,7 @@ export function TasksPage() {
         progress: 0,
         completed: false,
         due_date: newTaskDueDate ? format(newTaskDueDate, 'yyyy-MM-dd') : null,
+        priority: newTaskPriority,
       })
       .select()
       .single();
@@ -128,12 +134,14 @@ export function TasksPage() {
       progress: data.progress,
       completed: data.completed,
       dueDate: data.due_date || undefined,
+      priority: (data.priority as TaskPriority) || 'medium',
       createdAt: new Date(data.created_at),
     };
     
     setTasks(prev => [newTask, ...prev]);
     setNewTaskTitle('');
     setNewTaskDueDate(undefined);
+    setNewTaskPriority('medium');
     toast({
       title: "Quest added!",
       description: "A new endeavour awaits thee.",
@@ -207,6 +215,7 @@ export function TasksPage() {
         progress: updatedTask.progress,
         completed: updatedTask.completed,
         due_date: updatedTask.dueDate,
+        priority: updatedTask.priority,
       })
       .eq('id', updatedTask.id);
 
@@ -358,6 +367,31 @@ export function TasksPage() {
                   />
                 </PopoverContent>
               </Popover>
+              <Select value={newTaskPriority} onValueChange={(v) => setNewTaskPriority(v as TaskPriority)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                      Low Priority
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="medium">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                      Medium Priority
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="high">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-500" />
+                      High Priority
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
 
