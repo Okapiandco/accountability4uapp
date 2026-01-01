@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Target, Plus, Sparkles, CalendarDays } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Target, Plus, Sparkles, CalendarDays, Filter } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,8 @@ export function TasksPage() {
   const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory | undefined>(undefined);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTargetDate, setNewGoalTargetDate] = useState<Date | undefined>(undefined);
+  const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
+  const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -301,6 +303,16 @@ export function TasksPage() {
     ? Math.round(tasks.reduce((acc, t) => acc + t.progress, 0) / tasks.length) 
     : 0;
 
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      const categoryMatch = filterCategory === 'all' || task.category === filterCategory;
+      const priorityMatch = filterPriority === 'all' || task.priority === filterPriority;
+      return categoryMatch && priorityMatch;
+    });
+  }, [tasks, filterCategory, filterPriority]);
+
+  const hasActiveFilters = filterCategory !== 'all' || filterPriority !== 'all';
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Stats Overview */}
@@ -334,9 +346,69 @@ export function TasksPage() {
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Tasks Section */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Target className="w-6 h-6 text-burgundy" />
-            <h2 className="font-display text-2xl text-foreground">Daily Quests</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="w-6 h-6 text-burgundy" />
+              <h2 className="font-display text-2xl text-foreground">Daily Quests</h2>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex gap-2 flex-wrap">
+            <Select value={filterCategory} onValueChange={(v) => setFilterCategory(v as TaskCategory | 'all')}>
+              <SelectTrigger className="w-[140px]">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="work">💼 Work</SelectItem>
+                <SelectItem value="health">🏃 Health</SelectItem>
+                <SelectItem value="personal">🏠 Personal</SelectItem>
+                <SelectItem value="learning">📚 Learning</SelectItem>
+                <SelectItem value="finance">💰 Finance</SelectItem>
+                <SelectItem value="other">📌 Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterPriority} onValueChange={(v) => setFilterPriority(v as TaskPriority | 'all')}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priorities</SelectItem>
+                <SelectItem value="high">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    High
+                  </span>
+                </SelectItem>
+                <SelectItem value="medium">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                    Medium
+                  </span>
+                </SelectItem>
+                <SelectItem value="low">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-green-500" />
+                    Low
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            {hasActiveFilters && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setFilterCategory('all');
+                  setFilterPriority('all');
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Clear filters
+              </Button>
+            )}
           </div>
 
           {/* Add Task Form */}
@@ -419,7 +491,7 @@ export function TasksPage() {
 
           {/* Task List */}
           <div className="space-y-3">
-            {tasks.map(task => (
+            {filteredTasks.map(task => (
               <TaskCard
                 key={task.id}
                 task={task}
@@ -427,6 +499,11 @@ export function TasksPage() {
                 onDelete={deleteTask}
               />
             ))}
+            {filteredTasks.length === 0 && tasks.length > 0 && (
+              <p className="text-center text-muted-foreground font-body italic py-8">
+                No quests match thy filters. Try adjusting them.
+              </p>
+            )}
             {tasks.length === 0 && (
               <p className="text-center text-muted-foreground font-body italic py-8">
                 No quests yet. Add thy first endeavour above.
