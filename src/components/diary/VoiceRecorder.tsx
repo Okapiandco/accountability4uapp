@@ -12,6 +12,7 @@ interface VoiceRecorderProps {
 
 export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [interimText, setInterimText] = useState('');
@@ -23,6 +24,10 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const transcriptRef = useRef<string>('');
   const { toast } = useToast();
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
 
   // Check for Web Speech API support
   const getSpeechRecognition = useCallback(() => {
@@ -56,26 +61,32 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
     try {
       console.log('Starting recording...');
       console.log('Speech Recognition available:', hasSpeechRecognition);
-      
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+
+      // Mark recording immediately so SpeechRecognition onend can restart reliably
+      setIsRecording(true);
+      isRecordingRef.current = true;
+      transcriptRef.current = '';
+      setInterimText('');
+
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-        } 
+        }
       });
       streamRef.current = stream;
-      
+
       // Set up audio analysis for visualization
       audioContextRef.current = new AudioContext();
       analyserRef.current = audioContextRef.current.createAnalyser();
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
       analyserRef.current.fftSize = 256;
-      
+
       const bufferLength = analyserRef.current.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
-      
+
       const updateLevel = () => {
         if (analyserRef.current) {
           analyserRef.current.getByteFrequencyData(dataArray);
@@ -94,10 +105,7 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
         recognitionRef.current.lang = 'en-US';
-        
-        transcriptRef.current = '';
-        setInterimText('');
-        
+
         recognitionRef.current.onstart = () => {
           console.log('Speech recognition started');
         };
@@ -106,7 +114,7 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
           console.log('Speech recognition result received', event.results.length);
           let finalTranscript = '';
           let interimTranscript = '';
-          
+
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
@@ -116,7 +124,7 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
               interimTranscript += transcript;
             }
           }
-          
+
           if (finalTranscript) {
             transcriptRef.current += finalTranscript;
           }
@@ -141,9 +149,8 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
         };
 
         recognitionRef.current.onend = () => {
-          console.log('Speech recognition ended, isRecording:', isRecording);
-          // Restart if still recording (browser may stop it)
-          if (isRecording && recognitionRef.current) {
+          console.log('Speech recognition ended, isRecordingRef:', isRecordingRef.current);
+          if (isRecordingRef.current && recognitionRef.current) {
             try {
               console.log('Restarting speech recognition...');
               recognitionRef.current.start();
@@ -179,14 +186,15 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
       };
 
       mediaRecorderRef.current.start();
-      setIsRecording(true);
-      
+
       toast({
         title: "Recording hath begun",
         description: "Speak thy thoughts, and they shall be transcribed...",
       });
     } catch (error) {
       console.error('Error accessing microphone:', error);
+      setIsRecording(false);
+      isRecordingRef.current = false;
       toast({
         title: "Alas! Microphone access denied",
         description: "Prithee grant permission to use thy microphone.",
@@ -199,12 +207,13 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      isRecordingRef.current = false;
       setAudioLevel(0);
-      
+
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
-      
+
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
