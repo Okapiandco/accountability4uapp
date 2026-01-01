@@ -7,12 +7,15 @@ export interface DiaryEntry {
   updatedAt: Date;
 }
 
+export type TaskPriority = 'low' | 'medium' | 'high';
+
 export interface Task {
   id: string;
   title: string;
   description?: string;
   progress: number;
   dueDate?: string;
+  priority: TaskPriority;
   completed: boolean;
   createdAt: Date;
 }

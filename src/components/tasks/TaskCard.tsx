@@ -6,15 +6,28 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { Task } from '@/types/diary';
+import type { Task, TaskPriority } from '@/types/diary';
 
 interface TaskCardProps {
   task: Task;
   onUpdate: (task: Task) => void;
   onDelete: (id: string) => void;
 }
+
+const priorityColors = {
+  low: 'bg-green-500',
+  medium: 'bg-yellow-500',
+  high: 'bg-red-500',
+};
+
+const priorityBorderColors = {
+  low: 'border-l-green-500',
+  medium: 'border-l-yellow-500',
+  high: 'border-l-red-500',
+};
 
 export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -42,10 +55,15 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
     });
   };
 
+  const handlePriorityChange = (priority: TaskPriority) => {
+    onUpdate({ ...task, priority });
+  };
+
   return (
     <Card 
       className={cn(
-        "bg-card border-2 transition-all duration-300 hover:shadow-parchment",
+        "bg-card border-2 transition-all duration-300 hover:shadow-parchment border-l-4",
+        priorityBorderColors[task.priority],
         task.completed 
           ? "border-gold/40 bg-gold/5" 
           : "border-border hover:border-burgundy/30"
@@ -84,14 +102,20 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
                 </Button>
               </div>
             ) : (
-              <h4 
-                className={cn(
-                  "font-body text-lg leading-tight mb-3",
-                  task.completed && "line-through text-muted-foreground"
-                )}
-              >
-                {task.title}
-              </h4>
+              <div className="flex items-center gap-2 mb-3">
+                <h4 
+                  className={cn(
+                    "font-body text-lg leading-tight",
+                    task.completed && "line-through text-muted-foreground"
+                  )}
+                >
+                  {task.title}
+                </h4>
+                <span className={cn(
+                  "w-2 h-2 rounded-full flex-shrink-0",
+                  priorityColors[task.priority]
+                )} />
+              </div>
             )}
 
             {/* Progress Slider */}
@@ -116,12 +140,12 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
               </div>
             )}
 
-            {/* Due Date */}
+            {/* Due Date & Priority */}
             {!isEditing && (
-              <div className="mt-3">
+              <div className="mt-3 flex gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal">
+                    <Button variant="outline" size="sm" className="flex-1 justify-start text-left font-normal">
                       <CalendarDays className="mr-2 h-4 w-4" />
                       {task.dueDate ? (
                         <span>Due: {format(new Date(task.dueDate), 'PPP')}</span>
@@ -139,6 +163,31 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
                     />
                   </PopoverContent>
                 </Popover>
+                <Select value={task.priority} onValueChange={(v) => handlePriorityChange(v as TaskPriority)}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        Low
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="medium">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                        Medium
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="high">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        High
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
