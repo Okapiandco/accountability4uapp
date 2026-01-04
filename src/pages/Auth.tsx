@@ -12,25 +12,55 @@ import { Feather, Mail, Lock } from 'lucide-react';
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isPasswordUpdate, setIsPasswordUpdate] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
+    // Check for password recovery event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsPasswordUpdate(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user && !isPasswordUpdate) {
       navigate('/');
     }
-  }, [user, navigate]);
+  }, [user, navigate, isPasswordUpdate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (isForgotPassword) {
+      if (isPasswordUpdate) {
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        if (password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+        toast({
+          title: "Password updated!",
+          description: "Thy password has been changed successfully.",
+        });
+        setIsPasswordUpdate(false);
+        setPassword('');
+        setConfirmPassword('');
+        navigate('/');
+      } else if (isForgotPassword) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth`,
         });
@@ -79,6 +109,25 @@ export default function Auth() {
     }
   };
 
+  const getTitle = () => {
+    if (isPasswordUpdate) return 'Update Thy Password';
+    if (isForgotPassword) return 'Reset Thy Password';
+    return isLogin ? 'Welcome Back, Chronicler' : 'Begin Thy Chronicle';
+  };
+
+  const getDescription = () => {
+    if (isPasswordUpdate) return '"A fresh start awaits"';
+    if (isForgotPassword) return '"A new chapter awaits"';
+    return isLogin ? '"What is past is prologue"' : '"The pen is mightier than the sword"';
+  };
+
+  const getButtonText = () => {
+    if (loading) return 'Please wait...';
+    if (isPasswordUpdate) return 'Update Password';
+    if (isForgotPassword) return 'Send Reset Link';
+    return isLogin ? 'Enter Thy Chronicle' : 'Create Thy Chronicle';
+  };
+
   return (
     <div className="min-h-screen bg-background parchment-texture flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-card border-2 border-gold/20 shadow-parchment">
@@ -89,40 +138,36 @@ export default function Auth() {
             </div>
           </div>
           <CardTitle className="font-display text-2xl text-burgundy">
-            {isForgotPassword 
-              ? 'Reset Thy Password' 
-              : isLogin 
-                ? 'Welcome Back, Chronicler' 
-                : 'Begin Thy Chronicle'}
+            {getTitle()}
           </CardTitle>
           <CardDescription className="font-body italic text-muted-foreground">
-            {isForgotPassword
-              ? '"A new chapter awaits"'
-              : isLogin 
-                ? '"What is past is prologue"' 
-                : '"The pen is mightier than the sword"'}
+            {getDescription()}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="font-body">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="chronicler@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-parchment/50 border-border focus:border-gold"
-                  required
-                />
+            {!isPasswordUpdate && (
+              <div className="space-y-2">
+                <Label htmlFor="email" className="font-body">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="chronicler@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-parchment/50 border-border focus:border-gold"
+                    required
+                  />
+                </div>
               </div>
-            </div>
+            )}
             {!isForgotPassword && (
               <div className="space-y-2">
-                <Label htmlFor="password" className="font-body">Password</Label>
+                <Label htmlFor="password" className="font-body">
+                  {isPasswordUpdate ? 'New Password' : 'Password'}
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -138,7 +183,25 @@ export default function Auth() {
                 </div>
               </div>
             )}
-            {isLogin && !isForgotPassword && (
+            {isPasswordUpdate && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="font-body">Confirm Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10 bg-parchment/50 border-border focus:border-gold"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+            )}
+            {isLogin && !isForgotPassword && !isPasswordUpdate && (
               <button
                 type="button"
                 onClick={() => setIsForgotPassword(true)}
@@ -152,36 +215,32 @@ export default function Auth() {
               className="w-full bg-gradient-to-r from-burgundy to-burgundy-light hover:shadow-gold"
               disabled={loading}
             >
-              {loading 
-                ? 'Please wait...' 
-                : isForgotPassword 
-                  ? 'Send Reset Link' 
-                  : isLogin 
-                    ? 'Enter Thy Chronicle' 
-                    : 'Create Thy Chronicle'}
+              {getButtonText()}
             </Button>
           </form>
-          <div className="mt-6 text-center space-y-2">
-            {isForgotPassword ? (
-              <button
-                type="button"
-                onClick={() => setIsForgotPassword(false)}
-                className="text-sm text-muted-foreground hover:text-burgundy font-body"
-              >
-                Back to sign in
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-sm text-muted-foreground hover:text-burgundy font-body"
-              >
-                {isLogin 
-                  ? "New chronicler? Create an account" 
-                  : "Already have an account? Sign in"}
-              </button>
-            )}
-          </div>
+          {!isPasswordUpdate && (
+            <div className="mt-6 text-center space-y-2">
+              {isForgotPassword ? (
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(false)}
+                  className="text-sm text-muted-foreground hover:text-burgundy font-body"
+                >
+                  Back to sign in
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-sm text-muted-foreground hover:text-burgundy font-body"
+                >
+                  {isLogin 
+                    ? "New chronicler? Create an account" 
+                    : "Already have an account? Sign in"}
+                </button>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
