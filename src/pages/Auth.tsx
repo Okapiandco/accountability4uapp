@@ -11,6 +11,7 @@ import { Feather, Mail, Lock } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,7 +30,17 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth`,
+        });
+        if (error) throw error;
+        toast({
+          title: "Check thy inbox!",
+          description: "A password reset link has been sent to thy email.",
+        });
+        setIsForgotPassword(false);
+      } else if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -78,12 +89,18 @@ export default function Auth() {
             </div>
           </div>
           <CardTitle className="font-display text-2xl text-burgundy">
-            {isLogin ? 'Welcome Back, Chronicler' : 'Begin Thy Chronicle'}
+            {isForgotPassword 
+              ? 'Reset Thy Password' 
+              : isLogin 
+                ? 'Welcome Back, Chronicler' 
+                : 'Begin Thy Chronicle'}
           </CardTitle>
           <CardDescription className="font-body italic text-muted-foreground">
-            {isLogin 
-              ? '"What is past is prologue"' 
-              : '"The pen is mightier than the sword"'}
+            {isForgotPassword
+              ? '"A new chapter awaits"'
+              : isLogin 
+                ? '"What is past is prologue"' 
+                : '"The pen is mightier than the sword"'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -103,40 +120,67 @@ export default function Auth() {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password" className="font-body">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 bg-parchment/50 border-border focus:border-gold"
-                  required
-                  minLength={6}
-                />
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="password" className="font-body">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 bg-parchment/50 border-border focus:border-gold"
+                    required
+                    minLength={6}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+            {isLogin && !isForgotPassword && (
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(true)}
+                className="text-sm text-muted-foreground hover:text-burgundy font-body"
+              >
+                Forgot thy password?
+              </button>
+            )}
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-burgundy to-burgundy-light hover:shadow-gold"
               disabled={loading}
             >
-              {loading ? 'Please wait...' : isLogin ? 'Enter Thy Chronicle' : 'Create Thy Chronicle'}
+              {loading 
+                ? 'Please wait...' 
+                : isForgotPassword 
+                  ? 'Send Reset Link' 
+                  : isLogin 
+                    ? 'Enter Thy Chronicle' 
+                    : 'Create Thy Chronicle'}
             </Button>
           </form>
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-burgundy font-body"
-            >
-              {isLogin 
-                ? "New chronicler? Create an account" 
-                : "Already have an account? Sign in"}
-            </button>
+          <div className="mt-6 text-center space-y-2">
+            {isForgotPassword ? (
+              <button
+                type="button"
+                onClick={() => setIsForgotPassword(false)}
+                className="text-sm text-muted-foreground hover:text-burgundy font-body"
+              >
+                Back to sign in
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-sm text-muted-foreground hover:text-burgundy font-body"
+              >
+                {isLogin 
+                  ? "New chronicler? Create an account" 
+                  : "Already have an account? Sign in"}
+              </button>
+            )}
           </div>
         </CardContent>
       </Card>
