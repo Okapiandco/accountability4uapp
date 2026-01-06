@@ -20,6 +20,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { user } = useAuth();
@@ -265,13 +266,27 @@ export default function Auth() {
               </div>
             )}
             {isLogin && !isForgotPassword && !isPasswordUpdate && (
-              <button
-                type="button"
-                onClick={() => setIsForgotPassword(true)}
-                className="text-sm text-muted-foreground hover:text-burgundy font-body"
-              >
-                Forgot thy password?
-              </button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 rounded border-border text-burgundy focus:ring-gold cursor-pointer"
+                  />
+                  <Label htmlFor="rememberMe" className="text-sm font-body text-muted-foreground cursor-pointer">
+                    Remember me
+                  </Label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(true)}
+                  className="text-sm text-muted-foreground hover:text-burgundy font-body"
+                >
+                  Forgot thy password?
+                </button>
+              </div>
             )}
             <Button
               type="submit"
