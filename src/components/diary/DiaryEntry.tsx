@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-
+import { TomorrowGoal } from './TomorrowGoal';
+import { MotivationalQuote } from '@/components/ui/MotivationalQuote';
 interface DiaryEntryProps {
   date: Date;
   onDateChange: (date: Date) => void;
@@ -159,46 +160,61 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
         </Button>
       </div>
 
+      {/* Motivational Quote */}
+      <MotivationalQuote variant="card" />
 
-      {/* Entry Content */}
-      <Card className="bg-card border-2 border-gold/20 shadow-parchment">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg text-foreground">
-              This Day's Chronicle
-            </h3>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || isLoading}
-              className="bg-gradient-to-r from-burgundy to-burgundy-light hover:shadow-gold"
-            >
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              {isSaving ? 'Saving...' : 'Preserve'}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="min-h-[300px] flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Entry Content */}
+        <Card className="bg-card border-2 border-gold/20 shadow-parchment lg:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg text-foreground">
+                This Day's Chronicle
+              </h3>
+              <Button
+                onClick={handleSave}
+                disabled={isSaving || isLoading}
+                className="bg-gradient-to-r from-burgundy to-burgundy-light hover:shadow-gold"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                {isSaving ? 'Saving...' : 'Preserve'}
+              </Button>
             </div>
-          ) : (
-            <Textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="What hath transpired this day? Record thy thoughts, deeds, and musings herein..."
-              className="min-h-[300px] font-body text-lg leading-relaxed bg-parchment/50 border-border focus:border-gold focus:ring-gold/20 resize-none"
-            />
-          )}
-          <p className="mt-2 text-sm text-muted-foreground text-right">
-            {content.length} characters inscribed
-          </p>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="min-h-[300px] flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="What hath transpired this day? Record thy thoughts, deeds, and musings herein..."
+                className="min-h-[300px] font-body text-lg leading-relaxed bg-parchment/50 border-border focus:border-gold focus:ring-gold/20 resize-none"
+              />
+            )}
+            <p className="mt-2 text-sm text-muted-foreground text-right">
+              {content.length} characters inscribed
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Tomorrow's Goal Sidebar */}
+        <div className="space-y-6">
+          <TomorrowGoal date={date} />
+          
+          <div className="p-4 bg-parchment/30 rounded-lg border border-border">
+            <p className="text-sm text-muted-foreground text-center italic">
+              "The only way to do great work is to love what you do." — Steve Jobs
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Decorative Ornament */}
       <div className="h-8 ornament opacity-30" />
