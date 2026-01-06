@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      bucket_list: {
+        Row: {
+          category: string | null
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          item_text: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          item_text: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          item_text?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       diary_entries: {
         Row: {
           audio_transcript: string | null
@@ -176,6 +206,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tomorrows_goals: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          goal_text: string
+          id: string
+          target_date: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          goal_text: string
+          id?: string
+          target_date: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          goal_text?: string
+          id?: string
+          target_date?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

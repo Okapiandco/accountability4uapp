@@ -6,6 +6,7 @@ import { DiaryCalendar } from '@/components/diary/DiaryCalendar';
 import { TasksPage } from '@/components/tasks/TasksPage';
 import { ProjectsPage } from '@/components/projects/ProjectsPage';
 import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
+import { BucketList } from '@/components/goals/BucketList';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, CalendarDays, PenLine } from 'lucide-react';
@@ -95,6 +96,8 @@ const Index = () => {
         )}
         
         {activeTab === 'tasks' && <TasksPage />}
+        
+        {activeTab === 'bucketlist' && <BucketList />}
         
         {activeTab === 'analytics' && <AnalyticsDashboard />}
         

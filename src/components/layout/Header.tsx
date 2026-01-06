@@ -1,6 +1,7 @@
-import { Feather, BookOpen, Target, FolderOpen, Menu, X, BarChart3 } from 'lucide-react';
+import { BookOpen, Target, FolderOpen, Menu, X, BarChart3, Star } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { CompassQuillIcon } from '@/components/icons/CompassQuillIcon';
 
 interface HeaderProps {
   activeTab: string;
@@ -10,6 +11,7 @@ interface HeaderProps {
 const navItems = [
   { id: 'diary', label: 'Daily Chronicle', icon: BookOpen },
   { id: 'tasks', label: 'Quests & Endeavours', icon: Target },
+  { id: 'bucketlist', label: 'Bucket List', icon: Star },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'projects', label: 'Archives', icon: FolderOpen },
 ];
@@ -24,8 +26,8 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Feather className="w-8 h-8 md:w-10 md:h-10 text-gold animate-quill-write" />
-              <div className="absolute inset-0 bg-candlelight/20 blur-xl rounded-full animate-candleflicker" />
+              <CompassQuillIcon className="w-10 h-10 md:w-12 md:h-12" />
+              <div className="absolute inset-0 bg-candlelight/10 blur-xl rounded-full animate-candleflicker" />
             </div>
             <div className="flex flex-col">
               <h1 className="font-display text-xl md:text-2xl font-bold text-burgundy tracking-wide">
