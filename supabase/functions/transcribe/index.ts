@@ -1,8 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// Use APP_ORIGIN env variable for CORS, with fallback for development
+const allowedOrigin = Deno.env.get('APP_ORIGIN') || '*';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Credentials': 'true',
 };
 
 serve(async (req) => {
@@ -56,10 +60,12 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    // Log detailed error for server-side debugging
     console.error('Transcription error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Return generic error message to client
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Transcription failed. Please try again.' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
