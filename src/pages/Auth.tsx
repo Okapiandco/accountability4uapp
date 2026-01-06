@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Mail, Lock } from 'lucide-react';
 import { CompassQuillIcon } from '@/components/icons/CompassQuillIcon';
 import { Separator } from '@/components/ui/separator';
+import { PasswordStrengthMeter } from '@/components/auth/PasswordStrengthMeter';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,6 +23,18 @@ export default function Auth() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const isPasswordStrong = useMemo(() => {
+    return (
+      password.length >= 8 &&
+      /[A-Z]/.test(password) &&
+      /[a-z]/.test(password) &&
+      /\d/.test(password) &&
+      /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    );
+  }, [password]);
+
+  const showPasswordStrength = (!isLogin || isPasswordUpdate) && !isForgotPassword;
 
   useEffect(() => {
     // Check for password recovery event
@@ -49,8 +62,8 @@ export default function Auth() {
         if (password !== confirmPassword) {
           throw new Error('Passwords do not match');
         }
-        if (password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
+        if (!isPasswordStrong) {
+          throw new Error('Password does not meet strength requirements');
         }
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
@@ -83,6 +96,9 @@ export default function Auth() {
           description: "Thy return is most welcome, chronicler.",
         });
       } else {
+        if (!isPasswordStrong) {
+          throw new Error('Password does not meet strength requirements');
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -196,9 +212,12 @@ export default function Auth() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 bg-parchment/50 border-border focus:border-gold"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
+                {showPasswordStrength && (
+                  <PasswordStrengthMeter password={password} />
+                )}
               </div>
             )}
             {isPasswordUpdate && (
