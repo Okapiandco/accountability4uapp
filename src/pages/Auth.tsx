@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Feather, Mail, Lock } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
+import { CompassQuillIcon } from '@/components/icons/CompassQuillIcon';
 import { Separator } from '@/components/ui/separator';
 
 export default function Auth() {
@@ -152,9 +153,7 @@ export default function Auth() {
       <Card className="w-full max-w-md bg-card border-2 border-gold/20 shadow-parchment">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-gradient-to-br from-gold/20 to-burgundy/20">
-              <Feather className="w-8 h-8 text-gold" />
-            </div>
+            <CompassQuillIcon className="w-16 h-16" />
           </div>
           <CardTitle className="font-display text-2xl text-burgundy">
             {getTitle()}
