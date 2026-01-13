@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Target, Plus, Sparkles, CalendarDays, Filter, Repeat } from 'lucide-react';
+import { Target, Plus, Sparkles, CalendarDays, Filter, Repeat, ArrowRight, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isLastDayOfMonth, addMonths, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { TaskCard } from './TaskCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,6 +48,7 @@ export function TasksPage() {
   const [newGoalTargetDate, setNewGoalTargetDate] = useState<Date | undefined>(undefined);
   const [filterCategory, setFilterCategory] = useState<TaskCategory | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -311,15 +312,118 @@ export function TasksPage() {
     ? Math.round(tasks.reduce((acc, t) => acc + t.progress, 0) / tasks.length) 
     : 0;
 
-  const filteredTasks = useMemo(() => {
+  // Check if today is the last day of the selected month
+  const isLastDayOfSelectedMonth = isLastDayOfMonth(new Date()) && 
+    format(new Date(), 'yyyy-MM') === format(selectedMonth, 'yyyy-MM');
+
+  // Filter tasks by selected month and other filters
+  const monthlyTasks = useMemo(() => {
+    const monthStart = startOfMonth(selectedMonth);
+    const monthEnd = endOfMonth(selectedMonth);
+    
     return tasks.filter(task => {
+      // Filter by creation date being within the selected month
+      const taskDate = task.dueDate ? parseISO(task.dueDate) : task.createdAt;
+      const isInMonth = isWithinInterval(taskDate, { start: monthStart, end: monthEnd });
+      return isInMonth;
+    });
+  }, [tasks, selectedMonth]);
+
+  const filteredTasks = useMemo(() => {
+    return monthlyTasks.filter(task => {
       const categoryMatch = filterCategory === 'all' || task.category === filterCategory;
       const priorityMatch = filterPriority === 'all' || task.priority === filterPriority;
       return categoryMatch && priorityMatch;
     });
-  }, [tasks, filterCategory, filterPriority]);
+  }, [monthlyTasks, filterCategory, filterPriority]);
+
+  const incompleteTasks = filteredTasks.filter(t => !t.completed);
 
   const hasActiveFilters = filterCategory !== 'all' || filterPriority !== 'all';
+
+  // Move task to next month by updating its due date
+  const moveTaskToNextMonth = async (taskId: string) => {
+    const nextMonth = addMonths(selectedMonth, 1);
+    const newDueDate = format(startOfMonth(nextMonth), 'yyyy-MM-dd');
+    
+    const { error } = await supabase
+      .from('tasks')
+      .update({ due_date: newDueDate })
+      .eq('id', taskId);
+
+    if (error) {
+      toast({
+        title: "Error moving task",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTasks(prev => prev.map(t => 
+      t.id === taskId ? { ...t, dueDate: newDueDate } : t
+    ));
+    toast({
+      title: "Quest moved",
+      description: "The task shall carry over to next month.",
+    });
+  };
+
+  // Bulk actions for end of month
+  const moveAllIncompleteTasks = async () => {
+    const taskIds = incompleteTasks.map(t => t.id);
+    if (taskIds.length === 0) return;
+
+    const nextMonth = addMonths(selectedMonth, 1);
+    const newDueDate = format(startOfMonth(nextMonth), 'yyyy-MM-dd');
+    
+    const { error } = await supabase
+      .from('tasks')
+      .update({ due_date: newDueDate })
+      .in('id', taskIds);
+
+    if (error) {
+      toast({
+        title: "Error moving tasks",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTasks(prev => prev.map(t => 
+      taskIds.includes(t.id) ? { ...t, dueDate: newDueDate } : t
+    ));
+    toast({
+      title: "All quests moved",
+      description: `${taskIds.length} tasks carried over to next month.`,
+    });
+  };
+
+  const deleteAllIncompleteTasks = async () => {
+    const taskIds = incompleteTasks.map(t => t.id);
+    if (taskIds.length === 0) return;
+
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .in('id', taskIds);
+
+    if (error) {
+      toast({
+        title: "Error deleting tasks",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTasks(prev => prev.filter(t => !taskIds.includes(t.id)));
+    toast({
+      title: "Quests forgotten",
+      description: `${taskIds.length} incomplete tasks have been removed.`,
+    });
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -357,9 +461,63 @@ export function TasksPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="w-6 h-6 text-burgundy" />
-              <h2 className="font-display text-2xl text-foreground">Daily Quests</h2>
+              <h2 className="font-display text-2xl text-foreground">Monthly Quests</h2>
             </div>
           </div>
+
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between bg-card border-2 border-gold/20 rounded-lg p-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedMonth(prev => subMonths(prev, 1))}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Prev
+            </Button>
+            <span className="font-display text-lg text-foreground">
+              {format(selectedMonth, 'MMMM yyyy')}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedMonth(prev => addMonths(prev, 1))}
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+
+          {/* End of Month Actions */}
+          {isLastDayOfSelectedMonth && incompleteTasks.length > 0 && (
+            <Card className="bg-gradient-to-r from-burgundy/10 to-gold/10 border-2 border-gold/40">
+              <CardContent className="p-4">
+                <p className="text-sm font-body text-foreground mb-3">
+                  ⚠️ 'Tis the final day of the month! What shall become of thy {incompleteTasks.length} incomplete quest{incompleteTasks.length > 1 ? 's' : ''}?
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={moveAllIncompleteTasks}
+                    className="border-gold/40 hover:bg-gold/10"
+                  >
+                    <ArrowRight className="w-4 h-4 mr-1" />
+                    Move all to next month
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={deleteAllIncompleteTasks}
+                    className="border-destructive/40 hover:bg-destructive/10 text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Forget all incomplete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Filters */}
           <div className="flex gap-2 flex-wrap">
@@ -512,21 +670,36 @@ export function TasksPage() {
           {/* Task List */}
           <div className="space-y-3">
             {filteredTasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onUpdate={updateTask}
-                onDelete={deleteTask}
-              />
+              <div key={task.id} className="relative">
+                <TaskCard
+                  task={task}
+                  onUpdate={updateTask}
+                  onDelete={deleteTask}
+                />
+                {/* Individual task end-of-month actions */}
+                {isLastDayOfSelectedMonth && !task.completed && (
+                  <div className="flex gap-1 mt-1 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => moveTaskToNextMonth(task.id)}
+                      className="text-xs h-7 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <ArrowRight className="w-3 h-3 mr-1" />
+                      Move to next month
+                    </Button>
+                  </div>
+                )}
+              </div>
             ))}
-            {filteredTasks.length === 0 && tasks.length > 0 && (
+            {filteredTasks.length === 0 && monthlyTasks.length > 0 && (
               <p className="text-center text-muted-foreground font-body italic py-8">
                 No quests match thy filters. Try adjusting them.
               </p>
             )}
-            {tasks.length === 0 && (
+            {monthlyTasks.length === 0 && (
               <p className="text-center text-muted-foreground font-body italic py-8">
-                No quests yet. Add thy first endeavour above.
+                No quests for {format(selectedMonth, 'MMMM yyyy')}. Add thy first endeavour above.
               </p>
             )}
           </div>
