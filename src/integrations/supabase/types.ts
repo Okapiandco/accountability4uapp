@@ -107,6 +107,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          daily_reminder_enabled: boolean
+          daily_reminder_message: string
+          daily_reminder_time: string
+          id: string
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_reminder_enabled?: boolean
+          daily_reminder_message?: string
+          daily_reminder_time?: string
+          id?: string
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_reminder_enabled?: boolean
+          daily_reminder_message?: string
+          daily_reminder_time?: string
+          id?: string
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_files: {
         Row: {
           content: string | null
