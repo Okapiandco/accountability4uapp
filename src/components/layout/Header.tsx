@@ -1,5 +1,6 @@
-import { BookOpen, Target, FolderOpen, Menu, X, BarChart3, Star } from 'lucide-react';
+import { BookOpen, Target, FolderOpen, Menu, X, BarChart3, Star, Settings } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { CompassQuillIcon } from '@/components/icons/CompassQuillIcon';
 
@@ -18,6 +19,7 @@ const navItems = [
 
 export function Header({ activeTab, onTabChange }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-50 bg-card/95 backdrop-blur-sm border-b-2 border-gold/30 shadow-parchment">
@@ -56,6 +58,13 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
                 <span>{item.label}</span>
               </button>
             ))}
+            <button
+              onClick={() => navigate('/settings')}
+              className="flex items-center gap-2 px-3 py-2 rounded transition-all font-body text-lg hover:bg-muted text-foreground hover:text-burgundy ml-2"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -88,6 +97,16 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
                 <span>{item.label}</span>
               </button>
             ))}
+            <button
+              onClick={() => {
+                navigate('/settings');
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center gap-3 w-full px-4 py-3 rounded transition-all font-body text-lg hover:bg-muted text-foreground"
+            >
+              <Settings className="w-5 h-5" />
+              <span>Settings</span>
+            </button>
           </nav>
         )}
       </div>
