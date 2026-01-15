@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { ChevronLeft, ChevronRight, Save, CalendarDays, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, CalendarDays, Loader2, Sparkles, Check, X, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -9,15 +9,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { TomorrowGoal } from './TomorrowGoal';
 import { MotivationalQuote } from '@/components/ui/MotivationalQuote';
+
 interface DiaryEntryProps {
   date: Date;
   onDateChange: (date: Date) => void;
+}
+
+interface ProcessedContent {
+  overview: string;
+  bulletPoints: string[];
+  tasks: string[];
 }
 
 export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processedContent, setProcessedContent] = useState<ProcessedContent | null>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -55,6 +64,7 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
 
   useEffect(() => {
     fetchEntry();
+    setProcessedContent(null); // Clear processed content when date changes
   }, [fetchEntry]);
 
   const handlePreviousDay = () => {
@@ -67,6 +77,97 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
     const newDate = new Date(date);
     newDate.setDate(date.getDate() + 1);
     onDateChange(newDate);
+  };
+
+  const handleProcessRamble = async () => {
+    if (!content.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Nothing to process",
+        description: "Write or dictate something first!",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-ramble', {
+        body: { content }
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setProcessedContent(data);
+      toast({
+        title: "Ramble sorted!",
+        description: "Your thoughts have been organized.",
+      });
+    } catch (error: any) {
+      console.error('Error processing ramble:', error);
+      toast({
+        variant: "destructive",
+        title: "Processing failed",
+        description: error.message || "Could not process your text.",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const applyProcessedContent = () => {
+    if (!processedContent) return;
+    
+    let formattedContent = '';
+    
+    if (processedContent.overview) {
+      formattedContent += `📋 Overview:\n${processedContent.overview}\n\n`;
+    }
+    
+    if (processedContent.bulletPoints?.length > 0) {
+      formattedContent += `📝 Key Points:\n${processedContent.bulletPoints.map(p => `• ${p}`).join('\n')}\n\n`;
+    }
+    
+    if (processedContent.tasks?.length > 0) {
+      formattedContent += `✅ Tasks:\n${processedContent.tasks.map(t => `☐ ${t}`).join('\n')}`;
+    }
+    
+    setContent(formattedContent.trim());
+    setProcessedContent(null);
+    toast({
+      title: "Content applied!",
+      description: "Don't forget to save your entry.",
+    });
+  };
+
+  const createTasksFromProcessed = async () => {
+    if (!processedContent?.tasks?.length || !user) return;
+    
+    try {
+      const tasksToInsert = processedContent.tasks.map(task => ({
+        user_id: user.id,
+        title: task,
+        priority: 'medium' as const,
+        category: 'personal' as const,
+        status: 'pending' as const,
+        target_month: format(date, 'yyyy-MM'),
+      }));
+
+      const { error } = await supabase.from('tasks').insert(tasksToInsert);
+      if (error) throw error;
+
+      toast({
+        title: "Tasks created!",
+        description: `${processedContent.tasks.length} task(s) added to your monthly quests.`,
+      });
+    } catch (error: any) {
+      console.error('Error creating tasks:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to create tasks",
+        description: error.message,
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -171,18 +272,33 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
               <h3 className="font-display text-lg text-foreground">
                 This Day's Chronicle
               </h3>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving || isLoading}
-                className="bg-gradient-to-r from-burgundy to-burgundy-light hover:shadow-gold"
-              >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                {isSaving ? 'Saving...' : 'Preserve'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleProcessRamble}
+                  disabled={isProcessing || isLoading || !content.trim()}
+                  variant="outline"
+                  className="border-gold/40 hover:bg-gold/10 hover:border-gold"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-2 text-gold" />
+                  )}
+                  {isProcessing ? 'Sorting...' : 'Sort My Ramble'}
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving || isLoading}
+                  className="bg-gradient-to-r from-burgundy to-burgundy-light hover:shadow-gold"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  {isSaving ? 'Saving...' : 'Preserve'}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -201,6 +317,85 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
             <p className="mt-2 text-sm text-muted-foreground text-right">
               {content.length} characters inscribed
             </p>
+
+            {/* Processed Content Preview */}
+            {processedContent && (
+              <div className="mt-4 p-4 bg-gold/5 border border-gold/30 rounded-lg space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-display text-lg text-burgundy flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-gold" />
+                    AI-Sorted Content
+                  </h4>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setProcessedContent(null)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {processedContent.overview && (
+                  <div>
+                    <h5 className="font-semibold text-sm text-muted-foreground mb-1">📋 Overview</h5>
+                    <p className="font-body text-foreground">{processedContent.overview}</p>
+                  </div>
+                )}
+
+                {processedContent.bulletPoints?.length > 0 && (
+                  <div>
+                    <h5 className="font-semibold text-sm text-muted-foreground mb-1">📝 Key Points</h5>
+                    <ul className="space-y-1">
+                      {processedContent.bulletPoints.map((point, i) => (
+                        <li key={i} className="font-body text-foreground flex items-start gap-2">
+                          <span className="text-gold mt-1">•</span>
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {processedContent.tasks?.length > 0 && (
+                  <div>
+                    <h5 className="font-semibold text-sm text-muted-foreground mb-1">✅ Tasks Identified</h5>
+                    <ul className="space-y-1">
+                      {processedContent.tasks.map((task, i) => (
+                        <li key={i} className="font-body text-foreground flex items-start gap-2">
+                          <span className="text-burgundy">☐</span>
+                          {task}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2 border-t border-gold/20">
+                  <Button
+                    size="sm"
+                    onClick={applyProcessedContent}
+                    className="bg-gradient-to-r from-burgundy to-burgundy-light"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Apply to Entry
+                  </Button>
+                  {processedContent.tasks?.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={createTasksFromProcessed}
+                      className="border-gold/40 hover:bg-gold/10"
+                    >
+                      <ListChecks className="w-4 h-4 mr-2" />
+                      Create as Tasks
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
