@@ -145,8 +145,8 @@ export function TomorrowGoal({ date }: TomorrowGoalProps) {
       toast({
         title: newCompleted ? "Goal achieved!" : "Goal reopened",
         description: newCompleted 
-          ? "\"The journey of a thousand miles begins with a single step.\" - Lao Tzu" 
-          : "Keep striving, chronicler.",
+          ? "You're building momentum. Keep going!" 
+          : "Keep pushing forward, you've got this.",
       });
     } catch (error: any) {
       toast({

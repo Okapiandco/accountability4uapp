@@ -72,7 +72,7 @@ export default function Auth() {
         if (error) throw error;
         toast({
           title: "Password updated!",
-          description: "Thy password has been changed successfully.",
+          description: "You're all set. Your account is more secure than ever.",
         });
         setIsPasswordUpdate(false);
         setPassword('');
@@ -84,8 +84,8 @@ export default function Auth() {
         });
         if (error) throw error;
         toast({
-          title: "Check thy inbox!",
-          description: "A password reset link has been sent to thy email.",
+          title: "Check your inbox!",
+          description: "A password reset link has been sent to your email.",
         });
         setIsForgotPassword(false);
       } else if (isLogin) {
@@ -96,7 +96,7 @@ export default function Auth() {
         if (error) throw error;
         toast({
           title: "Welcome back!",
-          description: "Thy return is most welcome, chronicler.",
+          description: "Great to see you. Let's achieve your goals today.",
         });
       } else {
         if (!isPasswordStrong) {
@@ -112,7 +112,7 @@ export default function Auth() {
         if (error) throw error;
         toast({
           title: "Account created!",
-          description: "Welcome to thy new chronicle.",
+          description: "Welcome to Velomentum. Your success journey starts now.",
         });
       }
     } catch (error: any) {
@@ -149,22 +149,22 @@ export default function Auth() {
   };
 
   const getTitle = () => {
-    if (isPasswordUpdate) return 'Update Thy Password';
-    if (isForgotPassword) return 'Reset Thy Password';
-    return isLogin ? 'Welcome Back, Chronicler' : 'Begin Thy Chronicle';
+    if (isPasswordUpdate) return 'Secure Your Account';
+    if (isForgotPassword) return 'Reset Your Password';
+    return isLogin ? 'Welcome Back' : 'Start Your Journey';
   };
 
   const getDescription = () => {
-    if (isPasswordUpdate) return '"A fresh start awaits"';
-    if (isForgotPassword) return '"A new chapter awaits"';
-    return isLogin ? '"What is past is prologue"' : '"The pen is mightier than the sword"';
+    if (isPasswordUpdate) return '"Build a stronger future"';
+    if (isForgotPassword) return '"Second chances lead to success"';
+    return isLogin ? '"Keep your momentum going"' : '"Transform dreams into reality"';
   };
 
   const getButtonText = () => {
     if (loading) return 'Please wait...';
     if (isPasswordUpdate) return 'Update Password';
     if (isForgotPassword) return 'Send Reset Link';
-    return isLogin ? 'Enter Thy Chronicle' : 'Create Thy Chronicle';
+    return isLogin ? 'Sign In' : 'Create Account';
   };
 
   return (
@@ -191,7 +191,7 @@ export default function Auth() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="chronicler@example.com"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 bg-parchment/50 border-border focus:border-gold"
@@ -284,7 +284,7 @@ export default function Auth() {
                   onClick={() => setIsForgotPassword(true)}
                   className="text-sm text-muted-foreground hover:text-burgundy font-body"
                 >
-                  Forgot thy password?
+                  Forgot your password?
                 </button>
               </div>
             )}
@@ -351,7 +351,7 @@ export default function Auth() {
                   className="text-sm text-muted-foreground hover:text-burgundy font-body"
                 >
                   {isLogin 
-                    ? "New chronicler? Create an account" 
+                    ? "New here? Create an account" 
                     : "Already have an account? Sign in"}
                 </button>
               )}

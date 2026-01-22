@@ -196,7 +196,7 @@ export function VoiceRecorder({ onTranscript, isProcessing: externalProcessing }
       if (!data.text || data.text.trim() === '') {
         toast({
           title: "No speech detected",
-          description: "Speak louder or try again, good chronicler.",
+          description: "Speak up! Try again or check your microphone.",
           variant: "destructive",
         });
         setIsProcessing(false);

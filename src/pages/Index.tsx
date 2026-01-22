@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { DiaryEntry } from '@/components/diary/DiaryEntry';
 import { DiaryCalendar } from '@/components/diary/DiaryCalendar';
 import { TasksPage } from '@/components/tasks/TasksPage';
+import { DayToDayTasks } from '@/components/tasks/DayToDayTasks';
 import { ProjectsPage } from '@/components/projects/ProjectsPage';
 import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 import { BucketList } from '@/components/goals/BucketList';
@@ -27,7 +28,7 @@ const Index = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background parchment-texture flex items-center justify-center">
-        <p className="font-body text-muted-foreground">Loading thy chronicle...</p>
+        <p className="font-body text-muted-foreground">Loading your dashboard...</p>
       </div>
     );
   }
@@ -97,6 +98,8 @@ const Index = () => {
         
         {activeTab === 'tasks' && <TasksPage />}
         
+        {activeTab === 'day-to-day' && <DayToDayTasks />}
+        
         {activeTab === 'bucketlist' && <BucketList />}
         
         {activeTab === 'analytics' && <AnalyticsDashboard />}
@@ -108,10 +111,10 @@ const Index = () => {
       <footer className="border-t-2 border-gold/20 bg-card/50 py-6">
         <div className="container mx-auto px-4 text-center">
           <p className="font-body text-muted-foreground italic">
-            "We know what we are, but know not what we may be."
+            "The journey to success is paved with organized dreams."
           </p>
           <p className="font-display text-sm text-muted-foreground mt-2">
-            — The Chronicler, Anno Domini {new Date().getFullYear()}
+            — Velomentum {new Date().getFullYear()}
           </p>
         </div>
       </footer>

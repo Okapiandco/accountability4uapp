@@ -69,18 +69,19 @@ async function sendWebPush(
     const endpointUrl = new URL(subscription.endpoint);
     const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
 
-    // For simplicity, we'll use a basic fetch approach
-    // In production, you'd want to implement proper VAPID signing
+    // Generate VAPID JWT for proper Web Push Protocol security
+    const jwt = await generateJWT(vapidPrivateKey, audience, vapidSubject);
+
     const response = await fetch(subscription.endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "TTL": "86400",
+        "Authorization": `vapid t=${jwt}, k=${vapidPublicKey}`,
       },
       body: JSON.stringify(payload),
     });
 
-    console.log(`Push notification sent, status: ${response.status}`);
     return response.ok || response.status === 201;
   } catch (error) {
     console.error("Error sending push notification:", error);

@@ -161,7 +161,7 @@ export function ProjectsPage() {
     }
     toast({
       title: "Item removed",
-      description: "The archive hath been updated.",
+      description: "Your archives have been updated.",
     });
   };
 
@@ -184,8 +184,8 @@ export function ProjectsPage() {
     setSelectedFile({ ...selectedFile, content: editContent });
     setIsEditing(false);
     toast({
-      title: "Content preserved!",
-      description: "Thy words have been safely stored.",
+      title: "Content saved!",
+      description: "Your work has been preserved.",
     });
   };
 
@@ -206,7 +206,7 @@ export function ProjectsPage() {
     setNewItemName('');
     toast({
       title: `${newItemType === 'folder' ? 'Folder' : 'Note'} created!`,
-      description: "A new archive item hath been added.",
+      description: "New item added to your archive.",
     });
   };
 
@@ -216,9 +216,9 @@ export function ProjectsPage() {
         {/* File Tree */}
         <Card className="lg:col-span-1 bg-card border-2 border-gold/20 shadow-parchment">
           <CardHeader className="pb-2">
-            <h3 className="font-display text-lg text-foreground">Archives</h3>
+            <h3 className="font-display text-lg text-foreground">Projects</h3>
             <p className="text-sm text-muted-foreground font-body italic">
-              "Thy repository of knowledge"
+              "Your collection of ideas and work"
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -276,7 +276,7 @@ export function ProjectsPage() {
               ))}
               {files.length === 0 && (
                 <p className="text-center text-muted-foreground font-body italic py-4">
-                  The archives are empty.
+                  Your projects are empty. Create your first one above.
                 </p>
               )}
             </div>
@@ -351,7 +351,7 @@ export function ProjectsPage() {
               <div className="text-center py-16">
                 <FileText className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
                 <p className="text-muted-foreground font-body text-lg">
-                  Select an item from the archives to view its contents
+                  Select an item from your projects to view its contents
                 </p>
               </div>
             )}

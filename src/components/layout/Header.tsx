@@ -10,11 +10,12 @@ interface HeaderProps {
 }
 
 const navItems = [
-  { id: 'diary', label: 'Daily Chronicle', icon: BookOpen },
-  { id: 'tasks', label: 'Quests & Endeavours', icon: Target },
-  { id: 'bucketlist', label: 'Bucket List', icon: Star },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'projects', label: 'Archives', icon: FolderOpen },
+  { id: 'diary', label: 'Daily Reflection', icon: BookOpen },
+  { id: 'tasks', label: 'Goals & Tasks', icon: Target },
+  { id: 'day-to-day', label: 'Day to Day', icon: BookOpen },
+  { id: 'bucketlist', label: 'Dreams', icon: Star },
+  { id: 'analytics', label: 'Progress', icon: BarChart3 },
+  { id: 'projects', label: 'Projects', icon: FolderOpen },
 ];
 
 export function Header({ activeTab, onTabChange }: HeaderProps) {
@@ -33,10 +34,10 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
             </div>
             <div className="flex flex-col">
               <h1 className="font-display text-xl md:text-2xl font-bold text-burgundy tracking-wide">
-                The Chronicler
+                Velomentum
               </h1>
               <span className="hidden md:block text-xs text-muted-foreground italic">
-                "All the world's a stage, and all the days merely entries"
+                "Turn your dreams into momentum"
               </span>
             </div>
           </div>

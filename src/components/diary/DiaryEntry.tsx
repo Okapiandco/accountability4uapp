@@ -144,6 +144,7 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
     if (!processedContent?.tasks?.length || !user) return;
     
     try {
+      // Create tasks from processed items - they'll appear as a checkbox collection
       const tasksToInsert = processedContent.tasks.map(task => ({
         user_id: user.id,
         title: task,
@@ -158,7 +159,7 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
 
       toast({
         title: "Tasks created!",
-        description: `${processedContent.tasks.length} task(s) added to your monthly quests.`,
+        description: `${processedContent.tasks.length} task(s) from your thoughts. Check them off as you go!`,
       });
     } catch (error: any) {
       console.error('Error creating tasks:', error);
@@ -209,7 +210,7 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
       }
       toast({
         title: "Entry preserved!",
-        description: "Thy chronicle hath been safely stored.",
+        description: "Your thoughts have been safely saved.",
       });
     } catch (error: any) {
       console.error('Error saving entry:', error);

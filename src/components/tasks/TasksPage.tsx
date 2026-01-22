@@ -160,8 +160,8 @@ export function TasksPage() {
     setNewTaskCategory(undefined);
     setNewTaskRecurrence(undefined);
     toast({
-      title: "Quest added!",
-      description: newTaskRecurrence ? `This quest shall repeat ${newTaskRecurrence}.` : "A new endeavour awaits thee.",
+      title: "Task added!",
+      description: newTaskRecurrence ? `This task will repeat ${newTaskRecurrence}.` : "Time to crush this goal!",
     });
   };
 
@@ -200,8 +200,8 @@ export function TasksPage() {
     setNewGoalTitle('');
     setNewGoalTargetDate(undefined);
     toast({
-      title: "Ambition declared!",
-      description: "Thy grand goal hath been recorded.",
+      title: "Goal added!",
+      description: "Your ambition is now part of your journey.",
     });
   };
 
@@ -266,8 +266,8 @@ export function TasksPage() {
 
     setTasks(prev => prev.filter(t => t.id !== id));
     toast({
-      title: "Quest removed",
-      description: "The task hath been struck from the record.",
+      title: "Task removed",
+      description: "Task deleted. Keep pushing forward!",
     });
   };
 
@@ -364,8 +364,8 @@ export function TasksPage() {
       t.id === taskId ? { ...t, dueDate: newDueDate } : t
     ));
     toast({
-      title: "Quest moved",
-      description: "The task shall carry over to next month.",
+      title: "Task moved",
+      description: "Task moved to next month. Stay focused!",
     });
   };
 
@@ -395,7 +395,7 @@ export function TasksPage() {
       taskIds.includes(t.id) ? { ...t, dueDate: newDueDate } : t
     ));
     toast({
-      title: "All quests moved",
+      title: "Tasks moved",
       description: `${taskIds.length} tasks carried over to next month.`,
     });
   };
@@ -420,7 +420,7 @@ export function TasksPage() {
 
     setTasks(prev => prev.filter(t => !taskIds.includes(t.id)));
     toast({
-      title: "Quests forgotten",
+      title: "Tasks cleared",
       description: `${taskIds.length} incomplete tasks have been removed.`,
     });
   };
@@ -432,7 +432,7 @@ export function TasksPage() {
         <Card className="bg-card border-2 border-gold/20">
           <CardContent className="p-4 text-center">
             <p className="text-3xl font-display font-bold text-burgundy">{tasks.length}</p>
-            <p className="text-sm text-muted-foreground font-body">Total Quests</p>
+            <p className="text-sm text-muted-foreground font-body">Total Tasks</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-2 border-gold/20">
@@ -461,7 +461,7 @@ export function TasksPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="w-6 h-6 text-burgundy" />
-              <h2 className="font-display text-2xl text-foreground">Monthly Quests</h2>
+              <h2 className="font-display text-2xl text-foreground">Monthly Tasks</h2>
             </div>
           </div>
 
@@ -493,7 +493,7 @@ export function TasksPage() {
             <Card className="bg-gradient-to-r from-burgundy/10 to-gold/10 border-2 border-gold/40">
               <CardContent className="p-4">
                 <p className="text-sm font-body text-foreground mb-3">
-                  ⚠️ 'Tis the final day of the month! What shall become of thy {incompleteTasks.length} incomplete quest{incompleteTasks.length > 1 ? 's' : ''}?
+                  🎯 It's the last day of the month! You have {incompleteTasks.length} incomplete task{incompleteTasks.length > 1 ? 's' : ''}. What's your move?
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   <Button
@@ -584,7 +584,7 @@ export function TasksPage() {
                 <Input
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  placeholder="What quest dost thou undertake?"
+                  placeholder="What task will you conquer today?"
                   className="font-body"
                   onKeyDown={(e) => e.key === 'Enter' && addTask()}
                 />
@@ -694,12 +694,12 @@ export function TasksPage() {
             ))}
             {filteredTasks.length === 0 && monthlyTasks.length > 0 && (
               <p className="text-center text-muted-foreground font-body italic py-8">
-                No quests match thy filters. Try adjusting them.
+                No tasks match your filters. Try adjusting them.
               </p>
             )}
             {monthlyTasks.length === 0 && (
               <p className="text-center text-muted-foreground font-body italic py-8">
-                No quests for {format(selectedMonth, 'MMMM yyyy')}. Add thy first endeavour above.
+                No tasks for {format(selectedMonth, 'MMMM yyyy')}. Start by creating your first goal above.
               </p>
             )}
           </div>
@@ -719,7 +719,7 @@ export function TasksPage() {
                 <Input
                   value={newGoalTitle}
                   onChange={(e) => setNewGoalTitle(e.target.value)}
-                  placeholder="What is thy grand ambition?"
+                  placeholder="What's your big ambition?"
                   className="font-body"
                   onKeyDown={(e) => e.key === 'Enter' && addGoal()}
                 />
@@ -750,8 +750,9 @@ export function TasksPage() {
             </CardContent>
           </Card>
 
-          {/* Goals List */}
+          {/* Goals List - Achievement Tracking */}
           <div className="space-y-4">
+            <h3 className="font-display text-xl text-foreground mb-4">Achievements & Goals</h3>
             {goals.map(goal => (
               <Card key={goal.id} className="bg-card border-2 border-gold/30 shadow-parchment">
                 <CardContent className="p-5">
@@ -793,7 +794,7 @@ export function TasksPage() {
                   
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground font-body">Journey Progress</span>
+                      <span className="text-muted-foreground font-body">Progress</span>
                       <span className="font-display font-bold text-gold text-lg">
                         {goal.progress}%
                       </span>
@@ -805,7 +806,7 @@ export function TasksPage() {
                       step={1}
                     />
                     <p className="text-xs text-muted-foreground font-body italic text-center">
-                      "The journey of a thousand miles begins with a single step"
+                      "Every great achievement starts with a single action"
                     </p>
                   </div>
                 </CardContent>

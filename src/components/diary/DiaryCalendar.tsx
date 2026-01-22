@@ -179,7 +179,7 @@ export function DiaryCalendar({ onSelectDate, selectedDate }: DiaryCalendarProps
           <CardHeader className="pb-2">
             <h3 className="font-display text-lg text-foreground flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-burgundy" />
-              Chronicle Archive
+              Your Daily Chronicle
             </h3>
             <p className="text-sm text-muted-foreground font-body italic">
               Select a date to view or write an entry
