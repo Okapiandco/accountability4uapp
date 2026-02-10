@@ -1,20 +1,30 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// This is a cron-triggered function - minimal CORS needed for health checks only
-const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('APP_ORIGIN') || '',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+// This function should only be called by cron/scheduler, not by end users.
+// We verify a shared secret to prevent unauthorized invocation.
 
 Deno.serve(async (req) => {
+  // No CORS needed - this is a cron-only function, not called from browsers
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { status: 204 })
   }
 
   try {
+    // Verify cron secret to ensure only scheduled invocations can call this
+    const cronSecret = Deno.env.get("CRON_SECRET");
+    const authHeader = req.headers.get("Authorization");
+
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      console.log("Unauthorized cron invocation attempt");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const today = new Date()
@@ -24,7 +34,7 @@ Deno.serve(async (req) => {
     // Fetch all recurring tasks that need processing
     const { data: recurringTasks, error: fetchError } = await supabase
       .from('tasks')
-      .select('*')
+      .select('id, user_id, title, description, priority, category, recurrence, recurrence_end_date, last_recurrence_date, created_at')
       .not('recurrence', 'is', null)
       .or(`recurrence_end_date.is.null,recurrence_end_date.gte.${todayStr}`)
 
@@ -35,13 +45,25 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${recurringTasks?.length || 0} recurring tasks to process`)
 
-    const tasksToCreate: any[] = []
+    const tasksToCreate: Array<{
+      user_id: string;
+      title: string;
+      description: string | null;
+      priority: string;
+      category: string | null;
+      progress: number;
+      completed: boolean;
+      due_date: string;
+      parent_task_id: string;
+      recurrence: null;
+      recurrence_end_date: null;
+    }> = []
 
     for (const task of recurringTasks || []) {
-      const lastRecurrence = task.last_recurrence_date 
-        ? new Date(task.last_recurrence_date) 
+      const lastRecurrence = task.last_recurrence_date
+        ? new Date(task.last_recurrence_date)
         : new Date(task.created_at)
-      
+
       lastRecurrence.setHours(0, 0, 0, 0)
 
       let shouldCreateNew = false
@@ -56,20 +78,19 @@ Deno.serve(async (req) => {
         case 'weekly':
           shouldCreateNew = daysSinceLastRecurrence >= 7
           break
-        case 'monthly':
-          // Check if at least a month has passed
+        case 'monthly': {
           const lastMonth = lastRecurrence.getMonth()
           const lastYear = lastRecurrence.getFullYear()
           const currentMonth = today.getMonth()
           const currentYear = today.getFullYear()
-          
+
           const monthsDiff = (currentYear - lastYear) * 12 + (currentMonth - lastMonth)
           shouldCreateNew = monthsDiff >= 1
           break
+        }
       }
 
       if (shouldCreateNew) {
-        // Create a new task instance
         tasksToCreate.push({
           user_id: task.user_id,
           title: task.title,
@@ -80,7 +101,6 @@ Deno.serve(async (req) => {
           completed: false,
           due_date: todayStr,
           parent_task_id: task.id,
-          // New instances are not recurring themselves
           recurrence: null,
           recurrence_end_date: null,
         })
@@ -107,26 +127,24 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         processed: recurringTasks?.length || 0,
-        created: tasksToCreate.length 
+        created: tasksToCreate.length
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+      {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200
       }
     )
   } catch (error: unknown) {
-    // Log detailed error for server-side debugging
     console.error('Error processing recurring tasks:', error)
-    
-    // Return generic error message
+
     return new Response(
       JSON.stringify({ error: 'Task processing failed. Please try again.' }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+      {
+        headers: { 'Content-Type': 'application/json' },
+        status: 500
       }
     )
   }

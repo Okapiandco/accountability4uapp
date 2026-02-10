@@ -45,10 +45,11 @@ export function BucketList() {
     try {
       const { data, error } = await supabase
         .from('bucket_list')
-        .select('*')
+        .select('id, item_text, category, completed, completed_at, created_at')
         .eq('user_id', user.id)
         .order('completed', { ascending: true })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
       setItems(data || []);

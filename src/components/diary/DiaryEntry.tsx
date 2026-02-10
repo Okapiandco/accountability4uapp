@@ -41,7 +41,7 @@ export function DiaryEntry({ date, onDateChange }: DiaryEntryProps) {
     try {
       const { data, error } = await supabase
         .from('diary_entries')
-        .select('*')
+        .select('id, content')
         .eq('user_id', user.id)
         .eq('date', dateString)
         .maybeSingle();

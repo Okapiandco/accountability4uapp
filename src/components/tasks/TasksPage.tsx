@@ -61,9 +61,10 @@ export function TasksPage() {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, progress, completed, due_date, priority, category, recurrence, parent_task_id, created_at')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error) {
         console.error('Error fetching tasks:', error);
@@ -93,9 +94,10 @@ export function TasksPage() {
     const fetchGoals = async () => {
       const { data, error } = await supabase
         .from('goals')
-        .select('*')
+        .select('id, title, progress, target_date, created_at')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) {
         console.error('Error fetching goals:', error);

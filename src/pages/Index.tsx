@@ -1,41 +1,30 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, lazy, Suspense } from 'react';
 import { Header } from '@/components/layout/Header';
 import { DiaryEntry } from '@/components/diary/DiaryEntry';
 import { DiaryCalendar } from '@/components/diary/DiaryCalendar';
 import { TasksPage } from '@/components/tasks/TasksPage';
 import { DayToDayTasks } from '@/components/tasks/DayToDayTasks';
-import { ProjectsPage } from '@/components/projects/ProjectsPage';
-import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 import { BucketList } from '@/components/goals/BucketList';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut, CalendarDays, PenLine } from 'lucide-react';
+
+// Lazy load heavy components (recharts in analytics, projects not persisted)
+const AnalyticsDashboard = lazy(() => import('@/components/analytics/AnalyticsDashboard').then(m => ({ default: m.AnalyticsDashboard })));
+const ProjectsPage = lazy(() => import('@/components/projects/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+  </div>
+);
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('diary');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [diaryView, setDiaryView] = useState<'write' | 'calendar'>('write');
-  const { user, loading, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background parchment-texture flex items-center justify-center">
-        <p className="font-body text-muted-foreground">Loading your dashboard...</p>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  const { signOut } = useAuth();
 
   const handleCalendarDateSelect = (date: Date) => {
     setCurrentDate(date);
@@ -45,7 +34,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background parchment-texture">
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
-      
+
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
         {activeTab === 'diary' && (
           <div className="flex gap-2">
@@ -80,31 +69,41 @@ const Index = () => {
           Sign Out
         </Button>
       </div>
-      
+
       <main className="container mx-auto px-4 py-8">
-        {activeTab === 'diary' && diaryView === 'write' && (
-          <DiaryEntry 
-            date={currentDate} 
-            onDateChange={setCurrentDate} 
-          />
-        )}
-        
-        {activeTab === 'diary' && diaryView === 'calendar' && (
-          <DiaryCalendar
-            selectedDate={currentDate}
-            onSelectDate={handleCalendarDateSelect}
-          />
-        )}
-        
-        {activeTab === 'tasks' && <TasksPage />}
-        
-        {activeTab === 'day-to-day' && <DayToDayTasks />}
-        
-        {activeTab === 'bucketlist' && <BucketList />}
-        
-        {activeTab === 'analytics' && <AnalyticsDashboard />}
-        
-        {activeTab === 'projects' && <ProjectsPage />}
+        <ErrorBoundary>
+          {activeTab === 'diary' && diaryView === 'write' && (
+            <DiaryEntry
+              date={currentDate}
+              onDateChange={setCurrentDate}
+            />
+          )}
+
+          {activeTab === 'diary' && diaryView === 'calendar' && (
+            <DiaryCalendar
+              selectedDate={currentDate}
+              onSelectDate={handleCalendarDateSelect}
+            />
+          )}
+
+          {activeTab === 'tasks' && <TasksPage />}
+
+          {activeTab === 'day-to-day' && <DayToDayTasks />}
+
+          {activeTab === 'bucketlist' && <BucketList />}
+
+          {activeTab === 'analytics' && (
+            <Suspense fallback={<TabFallback />}>
+              <AnalyticsDashboard />
+            </Suspense>
+          )}
+
+          {activeTab === 'projects' && (
+            <Suspense fallback={<TabFallback />}>
+              <ProjectsPage />
+            </Suspense>
+          )}
+        </ErrorBoundary>
       </main>
 
       {/* Footer */}

@@ -212,6 +212,13 @@ export function ProjectsPage() {
 
   return (
     <div className="animate-fade-in">
+      <Card className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-300/50">
+        <CardContent className="p-4 text-center">
+          <p className="font-body text-sm text-yellow-800 dark:text-yellow-200">
+            Projects are stored locally in this session only. Your notes will be lost when you refresh the page. Database persistence is coming soon.
+          </p>
+        </CardContent>
+      </Card>
       <div className="grid lg:grid-cols-3 gap-6">
         {/* File Tree */}
         <Card className="lg:col-span-1 bg-card border-2 border-gold/20 shadow-parchment">

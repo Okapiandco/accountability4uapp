@@ -66,14 +66,16 @@ export function AnalyticsDashboard() {
       const [tasksResult, goalsResult] = await Promise.all([
         supabase
           .from('tasks')
-          .select('*')
+          .select('id, title, progress, completed, priority, category, created_at, due_date')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(1000),
         supabase
           .from('goals')
-          .select('*')
+          .select('id, title, progress, created_at')
           .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(100),
       ]);
 
       if (tasksResult.error) {

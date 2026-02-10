@@ -46,7 +46,7 @@ export function TomorrowGoal({ date }: TomorrowGoalProps) {
 
     const { data, error } = await supabase
       .from('tomorrows_goals')
-      .select('*')
+      .select('id, goal_text, target_date, completed')
       .eq('user_id', user.id)
       .eq('completed', false)
       .lt('target_date', todayString)
@@ -66,7 +66,7 @@ export function TomorrowGoal({ date }: TomorrowGoalProps) {
     try {
       const { data, error } = await supabase
         .from('tomorrows_goals')
-        .select('*')
+        .select('id, goal_text, target_date, completed')
         .eq('user_id', user.id)
         .eq('target_date', tomorrowDate)
         .maybeSingle();
